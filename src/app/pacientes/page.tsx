@@ -7,11 +7,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientCard } from "./components/PatientCard";
 import { SearchIcon } from "lucide-react";
 
+
+
 export default function PacientesPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
   const [searched, setSearched] = useState(false);
-
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const DUMMY_PATIENTS: Patient[] = [
+    {
+      id: "1",
+      nome: "Maria Silva",
+      cpf: "123.456.789-00",
+      dataNascimento: "1990-05-12",
+      sexo: "Feminino",
+      ultimaAtualizacao: "2025-04-20",
+      nomeMae: "Ana Silva",
+      local: "Campo Grande",
+    },
+    {
+      id: "2",
+      nome: "João Souza",
+      cpf: "987.654.321-00",
+      dataNascimento: "1985-11-03",
+      sexo: "Masculino",
+      ultimaAtualizacao: "2025-02-15",
+      nomeMae: "Clara Souza",
+      local: "Dourados",
+    },
+  ];
+  
   interface Patient {
     id: string;
     nome: string;
@@ -24,14 +50,29 @@ export default function PacientesPage() {
   }
 
   async function handleSearch() {
-    // TODO: chamar sua API/Supabase para buscar pacientes pelo nome ou prontuário
-    // Exemplo:
-    // const { data } = await supabase
-    //   .from('pacientes')
-    //   .select('*')
-    //   .ilike('nome', `%${query}%`);
-    // setResults(data || []);
+    setLoading(true);
+    setError(null);
+  
+    if (process.env.NODE_ENV === "development") {
+      // Simula atraso de rede
+      await new Promise((r) => setTimeout(r, 500));
+      setResults(
+        DUMMY_PATIENTS.filter((p) =>
+          p.nome.toLowerCase().includes(query.toLowerCase())
+        )
+      );
+    } else {
+      // sua chamada real ao Supabase
+      // const { data, error } = await supabase
+      //   .from("pacientes")
+      //   .select(/*…*/)
+      //   .ilike("nome", `%${query}%`);
+      // // …mesma lógica de map / error
+      console.log("Chamada real ao Supabase", query);
+    }
+  
     setSearched(true);
+    setLoading(false);
   }
 
   return (
@@ -65,3 +106,11 @@ export default function PacientesPage() {
     </div>
   );
 }
+function setLoading(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
+
+function setError(arg0: null) {
+  throw new Error("Function not implemented.");
+}
+
