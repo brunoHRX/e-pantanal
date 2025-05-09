@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { NavSection } from "@/lib/patient-data";
+import { NavSection } from "@/lib/data";
 
 interface AppSidebarProps {
   navMain: NavSection[];
@@ -26,14 +26,14 @@ export default function AppSidebar({ navMain }: AppSidebarProps) {
     <Sidebar className="w-64"> {/* ajuste largura conforme seu design */}
       <SidebarHeader>
         {/* por ex: <Logo /> */}
-        <h1 className="text-xl font-bold px-4">Meu Sistema</h1>
+        <h1 className="text-xl font-bold px-4 mb-10">Meu Sistema</h1>
       </SidebarHeader>
 
       <SidebarContent>
         {navMain.map((section) => (
-          <SidebarGroup key={section.title}>
-            <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
-            <SidebarMenu>
+          <SidebarGroup key={section.title} >
+            {/* <SidebarGroupLabel className="text-xl">{section.title}</SidebarGroupLabel> */}
+            <SidebarMenu className="gap-2">
               {section.items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={path.startsWith(item.url)}>

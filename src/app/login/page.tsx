@@ -1,26 +1,41 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { login, LoginPayload } from "@/services/auth";
+
 // Tipagem do formulário de login
-type LoginFormValues = {
-  email: string;
+interface LoginFormValues {
+  usuario: string;
   password: string;
-};
+}
 
 export default function LoginPage() {
-  const form = useForm<LoginFormValues>({ defaultValues: { email: "", password: "" } });
+  const form = useForm<LoginFormValues>({ defaultValues: { usuario: "", password: "" } });
+  const { control, handleSubmit, formState: { isSubmitting } } = form;
   const router = useRouter();
-  function onSubmit(values: LoginFormValues) {
-    // TODO: integrar autenticação com Supabase
-    console.log('Dados do login:', values);
-    router.push("/home");
+
+  async function onSubmit(values: LoginFormValues) {
+    try {
+      const payload: LoginPayload = {
+        username: values.usuario,
+        password: values.password,
+      };
+      const { token } = await login(payload);
+
+      // Armazena o token (você pode usar cookies, Context, etc.)
+      localStorage.setItem('authToken', token);
+
+      router.push('/home');
+    } catch (error: any) {
+      // Exibe mensagem de erro (pode ser melhorada para usar FormMessage)
+      alert(error.message || 'Falha na autenticação');
+    }
   }
 
   return (
@@ -33,28 +48,30 @@ export default function LoginPage() {
           width={1500}
           height={1500}
           priority
-          className="max-w-xs md:max-w-full max-h-full md:max-h-full "
+          className="max-w-xs md:max-w-full max-h-full md:max-h-full"
         />
       </div>
 
       {/* Formulário de login ao lado direito em desktop, abaixo em mobile */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6">
+      <div className="w-full md:w-1/2 flex items-center justify-center p-6 bg-white">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Bem-vindo ao <span className="text-pakistan_green-700">E-Pantanal</span> </CardTitle>
+            <CardTitle>
+              Bem-vindo ao <span className="text-pakistan_green-700">E-Pantanal</span>
+            </CardTitle>
             <CardDescription>Faça login na sua conta para continuar</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
-                  control={form.control}
-                  name="email"
+                  control={control}
+                  name="usuario"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Usuário</FormLabel>
                       <FormControl>
-                        <Input placeholder="usuario@exemplo.com" {...field} />
+                        <Input placeholder="admin" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -62,7 +79,7 @@ export default function LoginPage() {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
@@ -75,18 +92,15 @@ export default function LoginPage() {
                   )}
                 />
 
-                <Button type="submit" className="bg-pakistan_green-600 w-full">
-                  Entrar
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-pakistan_green-600 w-full"
+                >
+                  {isSubmitting ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
             </Form>
-
-            {/* <p className="text-sm text-center mt-4">
-              Não tem uma conta?{' '}
-              <Link href="/signup" className="text-blue-600 hover:underline">
-                Cadastre-se
-              </Link>
-            </p> */}
           </CardContent>
         </Card>
       </div>

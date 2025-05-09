@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientCard } from "./components/PatientCard";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SquarePlus } from "lucide-react";
 
 
 
 export default function PacientesPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
   const DUMMY_PATIENTS: Patient[] = [
     {
       id: "1",
@@ -49,6 +52,10 @@ export default function PacientesPage() {
     local: string;
   }
 
+  async function newRegistration() {
+    router.push("/patients/newPatient");
+  }
+
   async function handleSearch() {
     setLoading(true);
     setError(null);
@@ -79,17 +86,20 @@ export default function PacientesPage() {
     <div className="p-6">
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Pacientes</CardTitle>
+          <CardTitle className="text-xl ">Painel de Pacientes</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Pesquise por nome ou prontuário"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1"
-          />
-          <Button onClick={handleSearch} className="flex items-center">
-            <SearchIcon className="mr-2 h-4 w-4" /> Buscar
+        <CardContent className="flex flex-col md:flex-row gap-2 ">
+            <Input
+              placeholder="Pesquise por nome ou prontuário"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1"
+            />
+          <Button onClick={handleSearch} className="flex items-center py-2 px-4">
+            <SearchIcon className="mr-1 h-4 w-4" /> Buscar
+          </Button>
+          <Button onClick={newRegistration} className="flex items-center bg-pakistan_green-600">
+            <SquarePlus className="mr-1 h-4 w-4" /> Novo Cadastro
           </Button>
         </CardContent>
       </Card>
