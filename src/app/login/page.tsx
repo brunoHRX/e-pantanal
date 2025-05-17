@@ -33,10 +33,14 @@ export default function LoginPage() {
       localStorage.setItem('authToken', token);
 
       router.push('/home');
-    } catch (error: any) {
-      // Exibe mensagem de erro (pode ser melhorada para usar FormMessage)
-      alert(error.message || 'Falha na autenticação');
-    }
+    } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Falha na autenticação';
+        alert(message);
+      }
+
   }
 
   return (
