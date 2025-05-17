@@ -26,7 +26,7 @@ export default function AppSidebar({ navMain }: AppSidebarProps) {
     <Sidebar className="w-64"> {/* ajuste largura conforme seu design */}
       <SidebarHeader>
         {/* por ex: <Logo /> */}
-        <h1 className="text-xl font-bold px-4 mb-10">Meu Sistema</h1>
+        <h1 className="text-xl font-bold px-4 mb-10">E-Pantanal</h1>
       </SidebarHeader>
 
       <SidebarContent>

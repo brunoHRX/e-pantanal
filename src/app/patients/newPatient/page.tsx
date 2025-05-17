@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import {
   Card,
@@ -26,47 +26,23 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { NewPatientForm, getPatientById, createPatient, updatePatient } from "@/services/patientService";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect, useState } from "react";
 
 // Opções de campos
-const COR_RACA_OPCOES = [
-  "Branca",
-  "Preta",
-  "Parda",
-  "Amarela",
-  "Indígena",
-  "Não sabe/Não quis declarar",
-];
-const GENERO_OPCOES = ["Masculino", "Feminino", "Outro", "Não declarado"];
+const COR_RACA_OPCOES = [ "Branca", "Preta", "Parda", "Amarela", "Indígena", "Não sabe/Não quis declarar"];
+const FAMILIAR_OPCOES = ["Pai", "Mãe", "Irmão", "Irmã", "Cônjuge", "Filho(a)", "Outro"];
+const SEX_OPTIONS = ["Masculino", "Feminino"];
 const TIPO_SANGUINEO = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Não sabe"];
 const RELACAO_LOCAL = ["Trabalhador", "Familiar de Trabalhador", "Outro"];
-const INSTRUCAO_OPCOES = [
-  "Sem Instrução",
-  "Alfabetizado",
-  "Fundamental",
-  "Médio",
-  "Superior",
-  "Não declarado",
-];
+const INSTRUCAO_OPCOES = ["Sem Instrução", "Alfabetizado", "Fundamental", "Médio", "Superior", "Não declarado"];
 
-type NewPatientForm = {
-  nome: string;
-  dataNascimento: string;
-  cpf: string;
-  filiacao1: string;
-  filiacao2: string;
-  cor: string;
-  genero: string;
-  tipoSanguineo: string;
-  relacaoLocal: string;
-  fazendaReferencia?: string;
-  escolaridade: string;
-  alfabetizado: boolean;
-  pne: boolean;
-};
 
 export default function NewPatientPage() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const id = searchParams.get("id"); // `null` se for novo
   const form = useForm<NewPatientForm>({
     defaultValues: {
       nome: "",
@@ -75,25 +51,50 @@ export default function NewPatientPage() {
       filiacao1: "",
       filiacao2: "",
       cor: "",
-      genero: "Não declarado",
+      sex: "",
       tipoSanguineo: "",
       relacaoLocal: "Outro",
       fazendaReferencia: "",
+      relacaoFamiliar: "",
       escolaridade: "Não declarado",
       pne: false,
     },
   });
 
   const relacao = form.watch("relacaoLocal");
+  const [loading, setLoading] = useState(false);
 
   function onCancel() {
     router.back();
   }
 
-  function onSubmit(data: NewPatientForm) {
-    console.log("Salvando novo paciente:", data);
-    // TODO: integrar com backend
-    router.push("/patients");
+   // Se tiver ID, carrega os dados
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    getPatientById(id)
+      .then((data) => {
+        // popula o form
+        form.reset(data);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  // Função de submit
+  async function onSubmit(data: NewPatientForm) {
+    setLoading(true);
+    try {
+      if (id) {
+        await updatePatient(id, data);
+      } else {
+        await createPatient(data);
+      }
+      router.push("/patients"); // volta ao painel
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -206,17 +207,17 @@ export default function NewPatientPage() {
 
               <FormField
                 control={form.control}
-                name="genero"
+                name="sex"
                 render={({ field }) => (
                   <FormItem className="col-span-6 md:col-span-1">
-                    <FormLabel>Gênero</FormLabel>
+                    <FormLabel>Sexo</FormLabel>
                     <FormControl>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {GENERO_OPCOES.map((opt) => (
+                          {SEX_OPTIONS.map((opt) => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -304,22 +305,53 @@ export default function NewPatientPage() {
                 )}
               />
 
+
+              { relacao === "Familiar de Trabalhador" ? (
+
+                <FormField
+                control={form.control}
+                name="relacaoFamiliar"
+                render={({ field }) => (
+                  <FormItem className="col-span-6 md:col-span-1">
+                    <FormLabel>O que você é do Trabalhador?</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value} >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FAMILIAR_OPCOES.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+                />
+              ): null}
+
               {/* Fazenda Referência opcional em nova linha */}
               {relacao === "Trabalhador" || relacao === "Familiar de Trabalhador" ? (
                 <FormField
                   control={form.control}
                   name="fazendaReferencia"
                   render={({ field }) => (
-                    <FormItem className="col-span-6">
+                    <FormItem className="col-span-6 md:col-span-2 ">
                       <FormLabel>Fazenda Referência</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
+                      <FormControl >
+                        <Input placeholder="Coloque o Nome da Fazenda" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               ) : null}
+
+              
 
               {/* Checkboxes: Alfabetizado e PNE */}
               <FormField
@@ -339,7 +371,9 @@ export default function NewPatientPage() {
 
             <CardFooter className="flex justify-end gap-4 my-2">
               <Button className="w-22" variant="outline" onClick={onCancel}>Cancelar</Button>
-              <Button className="w-22" type="submit"> Salvar </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Salvando…" : id ? "Atualizar" : "Cadastrar"}
+              </Button>
             </CardFooter>
           </form>
         </Form>

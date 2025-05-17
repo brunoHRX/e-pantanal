@@ -1,3 +1,5 @@
+// src/app/patients/components/PatientCard.tsx
+
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,10 +13,11 @@ export interface Patient {
   nome: string;
   cpf: string;
   dataNascimento: string;      // ISO string (YYYY-MM-DD)
-  sexo: string;
+  sex: string;
   ultimaAtualizacao: string;   // ISO string
-  nomeMae: string;
-  local: string;
+  filiacao1: string;
+  filiacao2: string;
+  fazendaReferencia: string;
 }
 
 interface PatientCardProps {
@@ -41,25 +44,30 @@ export const PatientCard: React.FC<PatientCardProps> = ({ paciente, onUpdate }) 
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           <div>
-            <span className="font-medium">Data de Nasc.:</span>{' '}
+            <span className="font-medium">Data de Nascimento:</span>{' '}
             {formatDate(paciente.dataNascimento)}
           </div>
           <div>
             <span className="font-medium">Sexo:</span>{' '}
-            {paciente.sexo}
-          </div>
-          <div>
-            <span className="font-medium">Última Atualização:</span>{' '}
-            {formatDate(paciente.ultimaAtualizacao)}
+            {paciente.sex}
           </div>
           <div>
             <span className="font-medium">Nome da Mãe:</span>{' '}
-            {paciente.nomeMae}
+            {paciente.filiacao1}
+          </div>
+          <div>
+            <span className="font-medium">Nome do Pai:</span>{' '}
+            {paciente.filiacao2}
           </div>
           <div className="sm:col-span-2">
             <span className="font-medium">Local:</span>{' '}
-            {paciente.local}
+            {paciente.fazendaReferencia}
           </div>
+        </div>
+
+        <div className="mt-4 text-xs text-muted-foreground">
+          <span className="font-medium">Última Atualização:</span>{' '}
+          {formatDate(paciente.ultimaAtualizacao)}
         </div>
 
         <Button

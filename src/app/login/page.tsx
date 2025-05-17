@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col md:flex-row items-center justify-center min-h-screen">
       {/* Ilustração responsiva ao lado esquerdo em desktop, acima em mobile */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-amber-50 fixed md:relative md:top-0 top-0 left-0 m-0 p-0">
+      <div className="hidden md:flex md:w-1/2 items-center justify-center bg-amber-50 p-6">
         <Image
           src="/images/logo-sistema.svg"
           alt="Logo do sistema"

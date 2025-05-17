@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import AppSidebar from "./AppSidebar";
 import TopNav from "./TopNav";
 import { data } from "@/lib/data";
@@ -11,29 +11,39 @@ interface ClientLayoutProps {
   children: ReactNode;
 }
 
+// Component inside the provider to consume the shadcn UI sidebar context
+function LayoutWithSidebar({ children }: ClientLayoutProps) {
+  const { toggleSidebar } = useSidebar();
+
+  return (
+    <div className="flex h-screen w-screen">
+      {/* Sidebar (handles mobile offcanvas internally) */}
+      <AppSidebar navMain={data.navMain} />
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        {/* TopNav triggers toggleSidebar on mobile menu click */}
+        <TopNav onMenuClick={toggleSidebar} />
+        <main className="flex-1 overflow-auto bg-[#f8f7f7]">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
 
-  // se estivermos na /login, só renderiza a página normalmente
+  // Public route (login) without sidebar
   if (pathname === "/login") {
     return <>{children}</>;
   }
 
-  // para todas as outras rotas, renderiza sidebar + topnav
+  // Authenticated routes with sidebar
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-screen">
-        {/* Lado esquerdo: sidebar */}
-        <AppSidebar navMain={data.navMain} />
-
-        {/* Lado direito: conteúdo */}
-        <div className="flex-1 flex flex-col">
-          <TopNav />
-          <main className="flex-1 overflow-auto bg-[#f8f7f7]">
-            {children}
-          </main>
-        </div>
-      </div>
+      <LayoutWithSidebar>{children}</LayoutWithSidebar>
     </SidebarProvider>
   );
 }
