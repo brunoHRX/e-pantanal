@@ -78,6 +78,7 @@ export default function NewPatientPage() {
         form.reset(data);
       })
       .finally(() => setLoading(false));
+       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Função de submit
