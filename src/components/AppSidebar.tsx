@@ -8,7 +8,6 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -32,7 +31,6 @@ export default function AppSidebar({ navMain }: AppSidebarProps) {
       <SidebarContent>
         {navMain.map((section) => (
           <SidebarGroup key={section.title} >
-            {/* <SidebarGroupLabel className="text-xl">{section.title}</SidebarGroupLabel> */}
             <SidebarMenu className="gap-2">
               {section.items.map((item) => (
                 <SidebarMenuItem key={item.title}>
