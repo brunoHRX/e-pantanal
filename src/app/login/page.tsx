@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,8 @@ export default function LoginPage() {
   const { control, handleSubmit, formState: { isSubmitting } } = form;
   const router = useRouter();
 
-  async function onSubmit(values: LoginFormValues) {
+  // async function onSubmit(values: LoginFormValues) {
+  const onSubmit: SubmitHandler<LoginFormValues> = async (values) => {
     try {
       const payload: LoginPayload = {
         username: values.usuario,
