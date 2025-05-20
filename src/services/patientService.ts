@@ -99,7 +99,7 @@ function mapApiToPatient(api: ApiPatientResponse): Patient {
 }
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://www.apiepantanal.kinghost.net";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://apiepantanal.com.br";
 
 // busca TODOS os pacientes, já como Patient[]
 export async function getAllPatients(): Promise<Patient[]> {
