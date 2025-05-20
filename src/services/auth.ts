@@ -8,7 +8,7 @@ export interface LoginResponse {
   // acrescente aqui outros campos que sua API retorne, ex: expiresIn?: number
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://www.apiepantanal.kinghost.net';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://www.apiepantanal.kinghost.net';
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/api/Usuarios/Login`, {
