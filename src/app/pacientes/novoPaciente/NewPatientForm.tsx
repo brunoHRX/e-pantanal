@@ -1,100 +1,136 @@
-"use client";
+'use client'
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+  CardFooter
+} from '@/components/ui/card'
 import {
   Form,
   FormField,
   FormItem,
   FormLabel,
   FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+  FormMessage
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { NewPatientForm, getPatientById, createPatient, updatePatient } from "@/services/patientService";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useState } from "react";
+  SelectItem
+} from '@/components/ui/select'
+import {
+  NewPatientForm,
+  getPatientById,
+  createPatient,
+  updatePatient
+} from '@/services/patientService'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useEffect, useState } from 'react'
 
 // Opções de campos
-const COR_RACA_OPCOES = [ "Branca", "Preta", "Parda", "Amarela", "Indígena", "Não sabe/Não quis declarar"];
-const FAMILIAR_OPCOES = ["Pai", "Mãe", "Irmão", "Irmã", "Cônjuge", "Filho(a)", "Outro"];
-const SEX_OPTIONS = ["Masculino", "Feminino"];
-const TIPO_SANGUINEO = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Não sabe"];
-const RELACAO_LOCAL = ["Trabalhador", "Familiar de Trabalhador", "Outro"];
-const INSTRUCAO_OPCOES = ["Sem Instrução", "Alfabetizado", "Fundamental", "Médio", "Superior", "Não declarado"];
-
+const COR_RACA_OPCOES = [
+  'Branca',
+  'Preta',
+  'Parda',
+  'Amarela',
+  'Indígena',
+  'Não sabe/Não quis declarar'
+]
+const FAMILIAR_OPCOES = [
+  'Pai',
+  'Mãe',
+  'Irmão',
+  'Irmã',
+  'Cônjuge',
+  'Filho(a)',
+  'Outro'
+]
+const SEX_OPTIONS = ['Masculino', 'Feminino']
+const TIPO_SANGUINEO = [
+  'A+',
+  'A-',
+  'B+',
+  'B-',
+  'AB+',
+  'AB-',
+  'O+',
+  'O-',
+  'Não sabe'
+]
+const RELACAO_LOCAL = ['Trabalhador', 'Familiar de Trabalhador', 'Outro']
+const INSTRUCAO_OPCOES = [
+  'Sem Instrução',
+  'Alfabetizado',
+  'Fundamental',
+  'Médio',
+  'Superior',
+  'Não declarado'
+]
 
 export default function NewPatientPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const id = searchParams.get("id"); // `null` se for novo
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const id = searchParams.get('id') // `null` se for novo
   const form = useForm<NewPatientForm>({
     defaultValues: {
-      nome: "",
-      dataNascimento: "",
-      cpf: "",
-      filiacao1: "",
-      filiacao2: "",
-      cor: "",
-      sex: "",
-      tipoSanguineo: "",
-      relacaoLocal: "Outro",
-      fazendaReferencia: "",
-      relacaoFamiliar: "",
-      escolaridade: "Não declarado",
-      pne: false,
-    },
-  });
+      nome: '',
+      dataNascimento: '',
+      cpf: '',
+      filiacao1: '',
+      filiacao2: '',
+      cor: '',
+      sex: '',
+      tipoSanguineo: '',
+      relacaoLocal: 'Outro',
+      fazendaReferencia: '',
+      relacaoFamiliar: '',
+      escolaridade: 'Não declarado',
+      pne: false
+    }
+  })
 
-  const relacao = form.watch("relacaoLocal");
-  const [loading, setLoading] = useState(false);
+  const relacao = form.watch('relacaoLocal')
+  const [loading, setLoading] = useState(false)
 
   function onCancel() {
-    router.back();
+    router.back()
   }
 
-   // Se tiver ID, carrega os dados
+  // Se tiver ID, carrega os dados
   useEffect(() => {
-    if (!id) return;
-    setLoading(true);
+    if (!id) return
+    setLoading(true)
     getPatientById(id)
-      .then((data) => {
+      .then(data => {
         // popula o form
-        form.reset(data);
+        form.reset(data)
       })
-      .finally(() => setLoading(false));
-       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   // Função de submit
   async function onSubmit(data: NewPatientForm) {
-    setLoading(true);
+    setLoading(true)
     try {
       if (id) {
-        await updatePatient(id, data);
+        await updatePatient(id, data)
       } else {
-        await createPatient(data);
+        await createPatient(data)
       }
-      router.push("/patients"); // volta ao painel
+      router.push('/pacientes') // volta ao painel
     } catch (err) {
-      console.error(err);
+      console.error(err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -102,8 +138,11 @@ export default function NewPatientPage() {
     <div className="p-6">
       <Card>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
-            <CardHeader >
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col"
+          >
+            <CardHeader>
               <CardTitle className="my-6">Novo Cadastro de Paciente</CardTitle>
             </CardHeader>
 
@@ -188,12 +227,15 @@ export default function NewPatientPage() {
                   <FormItem className="col-span-6 md:col-span-1">
                     <FormLabel>Raça/Cor</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {COR_RACA_OPCOES.map((opt) => (
+                          {COR_RACA_OPCOES.map(opt => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -213,12 +255,15 @@ export default function NewPatientPage() {
                   <FormItem className="col-span-6 md:col-span-1">
                     <FormLabel>Sexo</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SEX_OPTIONS.map((opt) => (
+                          {SEX_OPTIONS.map(opt => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -238,12 +283,15 @@ export default function NewPatientPage() {
                   <FormItem className="col-span-6 md:col-span-1">
                     <FormLabel>Tipo Sanguíneo</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {TIPO_SANGUINEO.map((opt) => (
+                          {TIPO_SANGUINEO.map(opt => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -263,12 +311,15 @@ export default function NewPatientPage() {
                   <FormItem className="col-span-6 md:col-span-1">
                     <FormLabel>Escolaridade</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {INSTRUCAO_OPCOES.map((opt) => (
+                          {INSTRUCAO_OPCOES.map(opt => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -288,12 +339,15 @@ export default function NewPatientPage() {
                   <FormItem className="col-span-6 md:col-span-1">
                     <FormLabel>Relação Local</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {RELACAO_LOCAL.map((opt) => (
+                          {RELACAO_LOCAL.map(opt => (
                             <SelectItem key={opt} value={opt}>
                               {opt}
                             </SelectItem>
@@ -306,45 +360,29 @@ export default function NewPatientPage() {
                 )}
               />
 
-
-              { relacao === "Familiar de Trabalhador" ? (
-
-                <FormField
-                control={form.control}
-                name="relacaoFamiliar"
-                render={({ field }) => (
-                  <FormItem className="col-span-6 md:col-span-1">
-                    <FormLabel>O que você é do Trabalhador?</FormLabel>
-                    <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value} >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FAMILIAR_OPCOES.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-                />
-              ): null}
-
-              {/* Fazenda Referência opcional em nova linha */}
-              {relacao === "Trabalhador" || relacao === "Familiar de Trabalhador" ? (
+              {relacao === 'Familiar de Trabalhador' ? (
                 <FormField
                   control={form.control}
-                  name="fazendaReferencia"
+                  name="relacaoFamiliar"
                   render={({ field }) => (
-                    <FormItem className="col-span-6 md:col-span-2 ">
-                      <FormLabel>Fazenda Referência</FormLabel>
-                      <FormControl >
-                        <Input placeholder="Coloque o Nome da Fazenda" {...field} />
+                    <FormItem className="col-span-6 md:col-span-1">
+                      <FormLabel>O que você é do Trabalhador?</FormLabel>
+                      <FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FAMILIAR_OPCOES.map(opt => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -352,7 +390,26 @@ export default function NewPatientPage() {
                 />
               ) : null}
 
-              
+              {/* Fazenda Referência opcional em nova linha */}
+              {relacao === 'Trabalhador' ||
+              relacao === 'Familiar de Trabalhador' ? (
+                <FormField
+                  control={form.control}
+                  name="fazendaReferencia"
+                  render={({ field }) => (
+                    <FormItem className="col-span-6 md:col-span-2 ">
+                      <FormLabel>Fazenda Referência</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Coloque o Nome da Fazenda"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
               {/* Checkboxes: Alfabetizado e PNE */}
               <FormField
@@ -361,9 +418,14 @@ export default function NewPatientPage() {
                 render={({ field }) => (
                   <FormItem className="col-span-6 md:col-span-3 flex items-center">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
-                    <FormLabel className="ml-2">PNE (Necessidades Especiais)</FormLabel>
+                    <FormLabel className="ml-2">
+                      PNE (Necessidades Especiais)
+                    </FormLabel>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -371,14 +433,16 @@ export default function NewPatientPage() {
             </CardContent>
 
             <CardFooter className="flex justify-end gap-4 my-2">
-              <Button className="w-22" variant="outline" onClick={onCancel}>Cancelar</Button>
+              <Button className="w-22" variant="outline" onClick={onCancel}>
+                Cancelar
+              </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Salvando…" : id ? "Atualizar" : "Cadastrar"}
+                {loading ? 'Salvando…' : id ? 'Atualizar' : 'Cadastrar'}
               </Button>
             </CardFooter>
           </form>
         </Form>
       </Card>
     </div>
-  );
+  )
 }
