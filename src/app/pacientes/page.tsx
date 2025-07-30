@@ -48,7 +48,9 @@ export default function PacientesPage() {
     <div className="p-6">
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-xl">Painel de Pacientes</CardTitle>
+          <CardTitle className="text-2xl font-bold mb-4">
+            Painel de Pacientes
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row gap-2">
           <Input
