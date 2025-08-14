@@ -177,6 +177,7 @@ export default function NovoPacientePage() {
   async function onSubmit(data: any) {
     setLoading(true)
     try {
+      console.log(data);      
       if (id) await updatePatient(id, data)
       else await createPatient(data)
       router.push('/pacientes')

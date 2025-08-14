@@ -1,3 +1,5 @@
+import { API_BASE } from "@/utils/constants";
+
 export interface LoginPayload {
   username: string;
   password: string;
@@ -7,8 +9,6 @@ export interface LoginResponse {
   token: string;
   // acrescente aqui outros campos que sua API retorne, ex: expiresIn?: number
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://apiepantanal.com.br';
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/api/Usuarios/Login`, {

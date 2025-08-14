@@ -1,4 +1,4 @@
-// src/services/patientService.ts
+import { API_BASE } from "@/utils/constants";
 
 export type NewPatientForm = {
   nome: string;
@@ -98,9 +98,6 @@ function mapApiToPatient(api: ApiPatientResponse): Patient {
   };
 }
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://apiepantanal.com.br";
-
 // busca TODOS os pacientes, já como Patient[]
 export async function getAllPatients(): Promise<Patient[]> {
   const res = await fetch(`${API_BASE}/api/Pacientes`, {
@@ -135,14 +132,14 @@ export async function getPatientById(id: string): Promise<Patient> {
 
 // cria paciente
 export async function createPatient(data: NewPatientForm): Promise<void> {
-  const payload = toApiPayload(data);
+  // const payload = toApiPayload(data);
   const res = await fetch(`${API_BASE}/api/Pacientes`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(data),
   });
   if (!res.ok) {
     const msg = await res.text();
