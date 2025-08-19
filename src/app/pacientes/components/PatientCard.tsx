@@ -6,23 +6,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format, parseISO } from "date-fns";
 import React from "react";
-
-// Interface do paciente (mesma do contexto de busca)
-export interface Patient {
-  id: string;
-  nome: string;
-  cpf: string;
-  dataNascimento: string;      // ISO string (YYYY-MM-DD)
-  sex: string;
-  ultimaAtualizacao: string;   // ISO string
-  filiacao1: string;
-  filiacao2: string;
-  fazendaReferencia: string;
-}
+import { Patient } from "@/types/Patient";
 
 interface PatientCardProps {
   paciente: Patient;
-  onUpdate?: (id: string) => void;
+  onUpdate?: (id: number) => void;
 }
 
 export const PatientCard: React.FC<PatientCardProps> = ({ paciente, onUpdate }) => {
@@ -49,7 +37,7 @@ export const PatientCard: React.FC<PatientCardProps> = ({ paciente, onUpdate }) 
           </div>
           <div>
             <span className="font-medium">Sexo:</span>{' '}
-            {paciente.sex}
+            {paciente.sexo}
           </div>
           <div>
             <span className="font-medium">Nome da Mãe:</span>{' '}
@@ -65,10 +53,10 @@ export const PatientCard: React.FC<PatientCardProps> = ({ paciente, onUpdate }) 
           </div>
         </div>
 
-        <div className="mt-4 text-xs text-muted-foreground">
+        {/* <div className="mt-4 text-xs text-muted-foreground">
           <span className="font-medium">Última Atualização:</span>{' '}
           {formatDate(paciente.ultimaAtualizacao)}
-        </div>
+        </div> */}
 
         <Button
           variant="outline"

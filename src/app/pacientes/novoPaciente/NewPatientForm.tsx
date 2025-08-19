@@ -30,12 +30,7 @@ import {
   SelectItem
 } from '@/components/ui/select'
 import { useEffect, useState } from 'react'
-import {
-  NewPatientForm,
-  getPatientById,
-  createPatient,
-  updatePatient
-} from '@/services/patientService'
+import { Patient, createPatient, getPatientById, updatePatient } from '@/services/patientService'
 
 const SEX_OPTIONS = ['Masculino', 'Feminino', 'Outro']
 const COR_RACA_OPCOES = [
@@ -119,7 +114,7 @@ export default function NovoPacientePage() {
   const router = useRouter()
   const id = searchParams.get('id')
   const [loading, setLoading] = useState(false)
-  const form = useForm<NewPatientForm & { [key: string]: any }>({
+  const form = useForm<Patient & { [key: string]: any }>({
     defaultValues: {
       nome: '',
       nomeSocial: '',
@@ -157,28 +152,30 @@ export default function NovoPacientePage() {
     }
   })
 
-  const nacionalidade = form.watch('nacionalidade')
-  const paisResidencia = form.watch('paisResidencia')
+  // const nacionalidade = form.watch('nacionalidade')
+  // const paisResidencia = form.watch('paisResidencia')
   const desconheceMae = form.watch('desconheceMae')
   const desconhecePai = form.watch('desconhecePai')
   const semNumero = form.watch('semNumero')
-  const relacaoLocal = form.watch('relacaoLocal')
+  // const relacaoLocal = form.watch('relacaoLocal')
 
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getPatientById(id)
       .then(data => {
+        console.log(data);
+        
         form.reset(data)
       })
       .finally(() => setLoading(false))
   }, [id])
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: Patient) {
     setLoading(true)
     try {
       console.log(data);      
-      if (id) await updatePatient(id, data)
+      if (id) await updatePatient(data.id, data)
       else await createPatient(data)
       router.push('/pacientes')
     } catch (err) {
@@ -275,7 +272,7 @@ export default function NovoPacientePage() {
                   />
                   <FormField
                     control={form.control}
-                    name="sex"
+                    name="sexo"
                     render={({ field }) => (
                       <FormItem className="w-full flex flex-col items-center">
                         <FormLabel className="mb-1 text-center w-full">

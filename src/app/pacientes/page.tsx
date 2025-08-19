@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PatientCard } from './components/PatientCard'
 import { SearchIcon, SquarePlus } from 'lucide-react'
 
-import { getAllPatients, type Patient } from '@/services/patientService'
+import { getAllPatients, Patient } from '@/services/patientService'
 
 export default function PacientesPage() {
   const router = useRouter()
@@ -22,7 +22,7 @@ export default function PacientesPage() {
     router.push('/pacientes/novoPaciente')
   }
 
-  function handleUpdate(id: string) {
+  function handleUpdate(id: number) {
     router.push(`/pacientes/novoPaciente?id=${id}`)
   }
 
@@ -35,6 +35,8 @@ export default function PacientesPage() {
       const filtrados = dados.filter(p =>
         p.nome.toLowerCase().includes(query.toLowerCase())
       )
+      console.log(filtrados);
+      
       setResults(filtrados)
     } catch (err) {
       setError((err as Error).message)
