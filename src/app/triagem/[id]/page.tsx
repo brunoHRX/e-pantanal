@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useParams, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,46 +10,90 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { getPatientById, Patient } from '@/services/patientService'
+import { differenceInMonths, parseISO, isValid } from 'date-fns'
 
 type TriagemFormData = {
   nomePaciente: string
-  idade: string
+  idade: string // anos e meses
   prontuario: string
-  peso: string
 
   situacao: string
   sinaisVitais: {
+    peso: string
     temperatura: string
     fr: string
     sato2: string
     pa: string
     fc: string
   }
-  comorbidadeOp: string // Incapaz, Não Possui, Sim
+  comorbidadeOp: string
   comorbidadeDesc?: string
   obsComorbidade?: string
 
   medicacao24h: string
-  alergia: string // 'não' ou 'sim'
+  alergia: 'não' | 'sim'
   quaisAlergias?: string
 
-  // Sistema
   coletadoPor: string
   dataHora: string
 }
 
+function safeDate(iso?: string) {
+  if (!iso) return null
+  try {
+    const d = parseISO(iso)
+    return isValid(d) ? d : null
+  } catch {
+    return null
+  }
+}
+function formatAgeYearsMonths(iso?: string) {
+  const birth = safeDate(iso)
+  if (!birth) return ''
+  const totalMonths = differenceInMonths(new Date(), birth)
+  if (totalMonths < 0) return ''
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+  const y = years === 1 ? '1 ano' : `${years} anos`
+  const m = months === 0 ? '' : ` e ${months} ${months === 1 ? 'mês' : 'meses'}`
+  return `${y}${m}`
+}
+
+function DisplayField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="mt-2 w-full rounded border px-3 py-2 text-sm bg-background">
+        {value && value.trim() ? value : '—'}
+      </div>
+    </div>
+  )
+}
+
 export default function TriagemPage() {
-  const usuario = 'Usuário em Sessão' // Puxe da sessão/autenticação real
+  const usuario = 'Usuário em Sessão'
   const [dataHora] = useState(() => new Date().toLocaleString('pt-BR'))
+  const searchParams = useSearchParams()
+  const params = useParams() as { id?: string }
+
+  // aceita ?id= ou /triagem/[id]
+  const pacienteId = useMemo(() => {
+    const q = searchParams.get('id')
+    return Number(q ?? params?.id ?? NaN)
+  }, [searchParams, params])
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const form = useForm<TriagemFormData>({
     defaultValues: {
       nomePaciente: '',
       idade: '',
       prontuario: '',
-      peso: '',
       situacao: '',
       sinaisVitais: {
+        peso: '',
         temperatura: '',
         fr: '',
         sato2: '',
@@ -61,21 +106,46 @@ export default function TriagemPage() {
       alergia: 'não',
       quaisAlergias: '',
       coletadoPor: usuario,
-      dataHora: dataHora
+      dataHora
     }
   })
 
-  const { register, handleSubmit, watch, formState, setValue } = form
+  const { register, handleSubmit, watch, formState, reset, setValue } = form
   const { isSubmitting } = formState
-
-  // Condicional: mostrar caixa para qual comorbidade
-  const comorbidadeOp = watch('comorbidadeOp')
   const temAlergia = watch('alergia') === 'sim'
 
+  useEffect(() => {
+    async function load() {
+      if (!Number.isFinite(pacienteId)) {
+        setError('ID do paciente não informado.')
+        return
+      }
+      setLoading(true)
+      setError(null)
+      try {
+        const p = await getPatientById(String(pacienteId))
+        const idadeFmt = formatAgeYearsMonths(p?.dataNascimento)
+        reset(prev => ({
+          ...prev,
+          nomePaciente: p?.nome ?? '',
+          idade: idadeFmt,
+          prontuario: String(p?.id ?? ''),
+          coletadoPor: usuario,
+          dataHora
+        }))
+      } catch (e) {
+        setError((e as Error).message || 'Falha ao carregar paciente.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pacienteId])
+
   async function onSubmit(data: TriagemFormData) {
-    // Pode enviar para API aqui
+    // await saveTriagem({ pacienteId, ...data })
     toast.success('Triagem salva!')
-    // ...
   }
 
   return (
@@ -86,36 +156,44 @@ export default function TriagemPage() {
           <div className="text-xs text-slate-500 mt-2">
             Preenchido por: <b>{usuario}</b> <span className="mx-1">|</span>
             Data/hora: <b>{dataHora}</b>
+            {Number.isFinite(pacienteId) && (
+              <>
+                {' '}
+                <span className="mx-1">|</span> Paciente ID: <b>{pacienteId}</b>
+              </>
+            )}
           </div>
         </CardHeader>
+
         <CardContent>
+          {loading && (
+            <p className="text-sm text-muted-foreground">
+              Carregando paciente…
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive mb-4">Erro: {error}</p>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Dados do Paciente */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Nome e Idade como texto (outlined), Prontuário como input readOnly */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label>Nome do Paciente</Label>
-                <Input
-                  {...register('nomePaciente', { required: true })}
-                  className="mt-2"
+                <DisplayField
+                  label="Nome do Paciente"
+                  value={watch('nomePaciente')}
                 />
+                {/* manter no payload: */}
+                <input type="hidden" {...register('nomePaciente')} />
               </div>
               <div>
-                <Label>Idade</Label>
-                <Input
-                  {...register('idade', { required: true })}
-                  className="mt-2"
-                />
+                <DisplayField label="Idade" value={watch('idade')} />
+                {/* manter no payload: */}
+                <input type="hidden" {...register('idade')} />
               </div>
               <div>
                 <Label>Prontuário</Label>
-                <Input
-                  {...register('prontuario', { required: true })}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label>Peso (kg)</Label>
-                <Input {...register('peso')} className="mt-2" />
+                <input type="hidden" {...register('idade')} />
               </div>
             </div>
 
@@ -133,10 +211,13 @@ export default function TriagemPage() {
 
             <Separator />
 
-            {/* Sinais Vitais */}
             <div>
               <Label>Sinais Vitais e Parâmetros Relevantes</Label>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-2">
+                <div className="md:col-span-1 col-span-2">
+                  <Label>Peso (kg)</Label>
+                  <Input {...register('sinaisVitais.peso')} className="mt-2" />
+                </div>
                 <div>
                   <Label>Temperatura (°C)</Label>
                   <Input
@@ -183,7 +264,7 @@ export default function TriagemPage() {
                   <option value="Não Possui">Não Possui</option>
                   <option value="Sim">Sim</option>
                 </select>
-                {comorbidadeOp === 'Sim' && (
+                {watch('comorbidadeOp') === 'Sim' && (
                   <Input
                     {...register('comorbidadeDesc')}
                     placeholder="Descreva a comorbidade (ex: Diabetes, HAS, etc.)"
@@ -194,7 +275,7 @@ export default function TriagemPage() {
 
             <Separator />
 
-            {/* Medicação e Uso nas últimas 24h */}
+            {/* Medicação últimas 24h */}
             <div>
               <Label>Medicação e Uso nas Últimas 24h</Label>
               <Input
@@ -209,7 +290,7 @@ export default function TriagemPage() {
             {/* Alergias */}
             <div>
               <Label>Alergias</Label>
-              <div className="flex gap-4 mt-2">
+              <div className="flex flex-wrap items-center gap-4 mt-2">
                 <label className="flex items-center gap-1">
                   <input
                     type="radio"
@@ -239,7 +320,11 @@ export default function TriagemPage() {
 
             <Separator />
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || loading}
+            >
               Salvar Triagem
             </Button>
           </form>
