@@ -12,11 +12,17 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { getPatientById, Patient } from '@/services/patientService'
 import { differenceInMonths, parseISO, isValid } from 'date-fns'
+import { X } from 'lucide-react'
+
+/** ===== Tipos ===== **/
+export type Especialidade = { id: string; nome: string }
 
 type TriagemFormData = {
   nomePaciente: string
-  idade: string // anos e meses
+  idade: string // "X anos e Y meses"
   prontuario: string
+
+  especialidades: Especialidade[] // << mudou para objetos
 
   situacao: string
   sinaisVitais: {
@@ -39,6 +45,14 @@ type TriagemFormData = {
   dataHora: string
 }
 
+/** Preset inicial (futuro: virá da página de configuração / API) */
+const ESPECIALIDADES_PRESET: Especialidade[] = [
+  { id: 'odonto', nome: 'Odonto' },
+  { id: 'ortopedia', nome: 'Ortopedia' },
+  { id: 'clinico-geral', nome: 'Clinico Geral' }
+]
+
+/** ===== Helpers ===== **/
 function safeDate(iso?: string) {
   if (!iso) return null
   try {
@@ -71,6 +85,7 @@ function DisplayField({ label, value }: { label: string; value?: string }) {
   )
 }
 
+/** ===== Página ===== **/
 export default function TriagemPage() {
   const usuario = 'Usuário em Sessão'
   const [dataHora] = useState(() => new Date().toLocaleString('pt-BR'))
@@ -91,6 +106,7 @@ export default function TriagemPage() {
       nomePaciente: '',
       idade: '',
       prontuario: '',
+      especialidades: [], // << objetos
       situacao: '',
       sinaisVitais: {
         peso: '',
@@ -113,6 +129,11 @@ export default function TriagemPage() {
   const { register, handleSubmit, watch, formState, reset, setValue } = form
   const { isSubmitting } = formState
   const temAlergia = watch('alergia') === 'sim'
+  const especialidades = watch('especialidades') || []
+
+  // select controlado por id do preset
+  const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] =
+    useState<string>('')
 
   useEffect(() => {
     async function load() {
@@ -143,8 +164,29 @@ export default function TriagemPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pacienteId])
 
+  function addEspecialidade() {
+    const id = (especialidadeSelecionadaId || '').trim()
+    if (!id) return
+    const chosen = ESPECIALIDADES_PRESET.find(e => e.id === id)
+    if (!chosen) return
+    if (especialidades.some(e => e.id === id)) return // evita duplicado
+    setValue('especialidades', [...especialidades, chosen], {
+      shouldDirty: true
+    })
+    setEspecialidadeSelecionadaId('')
+  }
+  function removeEspecialidade(id: string) {
+    setValue(
+      'especialidades',
+      especialidades.filter(e => e.id !== id),
+      { shouldDirty: true }
+    )
+  }
+
   async function onSubmit(data: TriagemFormData) {
-    // await saveTriagem({ pacienteId, ...data })
+    // Exemplo de payload enxuto para API:
+    // const payload = { pacienteId, ...data, especialidadesIds: data.especialidades.map(e => e.id) }
+    // await saveTriagem(payload)
     toast.success('Triagem salva!')
   }
 
@@ -159,7 +201,7 @@ export default function TriagemPage() {
             {Number.isFinite(pacienteId) && (
               <>
                 {' '}
-                <span className="mx-1">|</span> Paciente ID: <b>{pacienteId}</b>
+                <span className="mx-1">|</span> Paciente ID: <b>{pacienteId}</b>{' '}
               </>
             )}
           </div>
@@ -176,25 +218,76 @@ export default function TriagemPage() {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Nome e Idade como texto (outlined), Prontuário como input readOnly */}
+            {/* Nome/Idade (texto outlined) + Prontuário readonly */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <DisplayField
                   label="Nome do Paciente"
                   value={watch('nomePaciente')}
                 />
-                {/* manter no payload: */}
                 <input type="hidden" {...register('nomePaciente')} />
               </div>
               <div>
                 <DisplayField label="Idade" value={watch('idade')} />
-                {/* manter no payload: */}
                 <input type="hidden" {...register('idade')} />
               </div>
               <div>
                 <Label>Prontuário</Label>
-                <input type="hidden" {...register('idade')} />
+                <Input {...register('prontuario')} className="mt-2" readOnly />
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Especialidades (múltiplas) */}
+            <div>
+              <Label>Especialidade(s) solicitada(s)</Label>
+              <div className="mt-2 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    className="border rounded px-3 py-2 min-w-[200px]"
+                    value={especialidadeSelecionadaId}
+                    onChange={e =>
+                      setEspecialidadeSelecionadaId(e.target.value)
+                    }
+                  >
+                    <option value="">Selecionar...</option>
+                    {ESPECIALIDADES_PRESET.map(opt => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="button" size="sm" onClick={addEspecialidade}>
+                    Adicionar
+                  </Button>
+                </div>
+
+                {especialidades.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="flex flex-wrap gap-2">
+                      {especialidades.map(esp => (
+                        <span
+                          key={esp.id}
+                          className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs"
+                        >
+                          {esp.nome}
+                          <button
+                            type="button"
+                            className="ml-1 rounded hover:bg-muted p-0.5"
+                            aria-label={`Remover ${esp.nome}`}
+                            onClick={() => removeEspecialidade(esp.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              {/* Não precisa de hidden input; RHF já mantém 'especialidades' no state */}
             </div>
 
             <Separator />
@@ -211,6 +304,7 @@ export default function TriagemPage() {
 
             <Separator />
 
+            {/* Sinais Vitais (Peso primeiro) */}
             <div>
               <Label>Sinais Vitais e Parâmetros Relevantes</Label>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-2">

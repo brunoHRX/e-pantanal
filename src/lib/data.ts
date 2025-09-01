@@ -21,6 +21,7 @@ export const data = {
         { title: "Histórico",    url: "/historico" },
         { title: "Fila de Espera", url: "/fila-espera" },
         { title: "Farmácia",     url: "/farmacia" },
+        { title: "Configurações",     url: "/configuracoes" },
       ],
     },
   ] as NavSection[],
