@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ArrowLeft } from 'lucide-react'
 import Odontograma from '../componentes/Odontograma'
+import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
 // --------------------
 // Tipos
@@ -37,7 +38,7 @@ interface Triagem {
 }
 
 // --------------------
-// Mocks de fetch (trocar por API/Supabase)
+// Mocks (trocar por API/Supabase)
 // --------------------
 async function fetchPacienteById(pacienteId: string): Promise<Paciente | null> {
   await new Promise(r => setTimeout(r, 250))
@@ -65,21 +66,6 @@ async function fetchTriagemAtual(
   }
 }
 
-const PROCEDIMENTOS_PRESETS = [
-  'Exodontia Raiz Residual',
-  'Exodontia de semi inclusos',
-  'Exodontia Inclusos',
-  'Exodontia de decíduos',
-  'Tratamento endodôntico em decíduos',
-  'Sutura',
-  'Anestesia Dental',
-  'Radiografia Periapical',
-  'Prescrição medicamentoso',
-  'Remoção de cárie'
-] as const
-
-type Procedimento = (typeof PROCEDIMENTOS_PRESETS)[number]
-
 export default function AtendimentoOdontologicoPage() {
   const router = useRouter()
   const params = useParams<{ idFila: string }>()
@@ -93,13 +79,17 @@ export default function AtendimentoOdontologicoPage() {
   const [dadosPaciente, setDadosPaciente] = useState<Paciente | null>(null)
   const [triagem, setTriagem] = useState<Triagem | null>(null)
 
-  // Campos do atendimento odontológico
+  // Campos do atendimento
   const [evolucao, setEvolucao] = useState<string>('')
   const [prescricao, setPrescricao] = useState<string>('')
-  const [assinatura, setAssinatura] = useState<string | null>(null)
 
-  // Procedimentos selecionados
-  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([])
+  // Seleções do Odontograma (por dente) — CONTROLADO
+  const [odontoSelections, setOdontoSelections] = useState<ToothSelectionsMap>(
+    {}
+  )
+
+  // Accordion controlado somente para Info+Triagem
+  const [infoOpen, setInfoOpen] = useState<string | undefined>('info')
 
   useEffect(() => {
     let ativo = true
@@ -121,7 +111,14 @@ export default function AtendimentoOdontologicoPage() {
 
   // Ações
   const handleFinalizar = async () => {
-    // TODO: enviar para API: { idFila, pacienteId, evolucao, prescricao, assinatura, procedimentos }
+    // TODO: enviar para API:
+    // {
+    //   idFila,
+    //   pacienteId,
+    //   evolucao,
+    //   prescricao,
+    //   odontograma: odontoSelections
+    // }
     toast.success('Atendimento finalizado!')
     router.push('/atendimento')
   }
@@ -131,17 +128,15 @@ export default function AtendimentoOdontologicoPage() {
     router.push('/atendimento')
   }
 
-  const toggleProcedimento = (p: Procedimento) => {
-    setProcedimentos(prev =>
-      prev.includes(p) ? prev.filter(i => i !== p) : [...prev, p]
-    )
-  }
+  const selectionsArray = Object.values(odontoSelections).filter(
+    s => (s.procedures?.length || 0) > 0
+  )
 
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#f8f7f7] p-4">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex items-center gap-3 pt-2">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <Button
               variant="outline"
               onClick={() => router.push('/atendimento')}
@@ -169,27 +164,28 @@ export default function AtendimentoOdontologicoPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f7f7] p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto w-full max-w-7xl">
         {/* CARD ÚNICO */}
-        <Card>
-          <CardHeader className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2">
+        <Card className="w-full">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push('/atendimento')}
+                className="w-full sm:w-auto"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
               </Button>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-xl sm:text-2xl">
                 Atendimento Odontológico
               </CardTitle>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">
+            <div className="text-left sm:text-right text-xs text-muted-foreground">
+              <p>
                 Fila: <span className="font-medium">{idFila}</span>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p>
                 Paciente:{' '}
                 <span className="font-medium">{dadosPaciente?.id}</span>
               </p>
@@ -202,17 +198,18 @@ export default function AtendimentoOdontologicoPage() {
               <Accordion
                 type="single"
                 collapsible
-                defaultValue={['info'] as any}
+                value={infoOpen}
+                onValueChange={setInfoOpen}
               >
                 <AccordionItem value="info" className="border-b">
                   <AccordionTrigger className="px-4 py-3 text-base font-semibold">
                     Informações do Paciente e Triagem
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      {/* Bloco Paciente */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
+                    <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Paciente */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="sm:col-span-2">
                           <Label>Nome</Label>
                           <Input
                             value={dadosPaciente?.nome || ''}
@@ -236,7 +233,7 @@ export default function AtendimentoOdontologicoPage() {
                             disabled
                           />
                         </div>
-                        <div className="col-span-2">
+                        <div className="sm:col-span-2">
                           <Label>Contato</Label>
                           <Input
                             value={dadosPaciente?.contato || ''}
@@ -246,16 +243,16 @@ export default function AtendimentoOdontologicoPage() {
                         </div>
                       </div>
 
-                      {/* Separador responsivo (opcional) */}
+                      {/* Espaço responsivo (só em ≥ lg) */}
                       <div className="hidden lg:block" />
 
-                      {/* Bloco Triagem Resumo */}
+                      {/* Triagem */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
+                        <div className="col-span-2 sm:col-span-1">
                           <Label>PA</Label>
                           <Input value={triagem?.pa || ''} readOnly disabled />
                         </div>
-                        <div>
+                        <div className="col-span-2 sm:col-span-1">
                           <Label>Hipertensão</Label>
                           <Input
                             value={triagem?.hipertensao || ''}
@@ -263,7 +260,7 @@ export default function AtendimentoOdontologicoPage() {
                             disabled
                           />
                         </div>
-                        <div>
+                        <div className="col-span-2 sm:col-span-1">
                           <Label>Diabetes</Label>
                           <Input
                             value={triagem?.diabetes || ''}
@@ -271,7 +268,7 @@ export default function AtendimentoOdontologicoPage() {
                             disabled
                           />
                         </div>
-                        <div>
+                        <div className="col-span-2 sm:col-span-1">
                           <Label>Alergia</Label>
                           <Input
                             value={triagem?.alergia || ''}
@@ -280,7 +277,6 @@ export default function AtendimentoOdontologicoPage() {
                           />
                         </div>
 
-                        {/* Chips de sinalização rápida */}
                         <div className="col-span-2 flex flex-wrap gap-2 mt-2">
                           {triagem?.hipertensao === 'sim' && (
                             <Badge className="bg-rose-600">Hipertenso</Badge>
@@ -302,62 +298,105 @@ export default function AtendimentoOdontologicoPage() {
               </Accordion>
             </div>
 
-            {/* Section 2 — Odontograma + Procedimentos (odontograma colapsável) */}
+            {/* Section 2 — Odontograma (sem colapse) + Resumo */}
             <div className="border rounded-lg">
-              <Accordion type="single" collapsible>
-                <AccordionItem value="odonto">
-                  <AccordionTrigger className="px-4 py-3 text-base font-semibold">
-                    Odontograma
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-col items-center">
-                        <Odontograma />
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+              <div className="px-4 py-3 text-base font-semibold border-b">
+                Odontograma
+              </div>
 
-              {/* Procedimentos (sempre visível abaixo do trigger) */}
-              <div className="px-4 pb-4 pt-2 border-t">
-                <Label className="mb-2 block">Procedimentos</Label>
-                <div className="flex flex-wrap gap-2">
-                  {PROCEDIMENTOS_PRESETS.map(p => {
-                    const active = procedimentos.includes(p)
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => toggleProcedimento(p)}
-                        className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                          active
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-background text-foreground border-muted-foreground/30 hover:bg-muted'
-                        }`}
-                        aria-pressed={active}
-                      >
-                        {p}
-                      </button>
-                    )
-                  })}
+              {/* Odontograma sempre visível; contêiner responsivo sem overflow */}
+              <div className="px-2 sm:px-4 pb-4 w-full">
+                <div className="w-full max-w-full">
+                  <Odontograma
+                    value={odontoSelections}
+                    onChange={setOdontoSelections}
+                  />
                 </div>
+              </div>
 
-                {procedimentos.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {procedimentos.map(p => (
-                      <Badge key={p} variant="secondary" className="gap-1">
-                        {p}
-                        <button
-                          type="button"
-                          onClick={() => toggleProcedimento(p)}
-                          className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
-                          aria-label={`Remover ${p}`}
-                          title="Remover"
-                        >
-                          ×
-                        </button>
-                      </Badge>
+              {/* Resumo de procedimentos por dente */}
+              <div className="px-4 pb-4 pt-2 border-t space-y-2">
+                <Label className="mb-2 block">
+                  Procedimentos selecionados por dente
+                </Label>
+                {selectionsArray.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum procedimento selecionado no odontograma.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {selectionsArray.map(sel => (
+                      <div key={sel.tooth} className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="font-mono"
+                            title={`Dente ${sel.tooth} (Q${sel.quadrant})`}
+                          >
+                            {sel.tooth}
+                          </Badge>
+                          {sel.faces?.length > 0 && (
+                            <Badge variant="outline" className="opacity-80">
+                              Faces: {sel.faces.join('/')}
+                            </Badge>
+                          )}
+                          {/* Remover todos deste dente (opcional) */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2"
+                            onClick={() =>
+                              setOdontoSelections(prev => {
+                                const next = { ...prev }
+                                delete next[sel.tooth]
+                                return next
+                              })
+                            }
+                          >
+                            Limpar dente
+                          </Button>
+                        </div>
+
+                        {/* Procedimentos com “×” para remover individualmente */}
+                        <div className="flex flex-wrap gap-2 pl-0 sm:pl-6">
+                          {sel.procedures.map(p => (
+                            <Badge
+                              key={`${sel.tooth}-${p}`}
+                              variant="secondary"
+                              className="gap-1"
+                            >
+                              {p}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOdontoSelections(prev => {
+                                    const next = { ...prev }
+                                    const atual = next[sel.tooth]
+                                    if (!atual) return prev
+                                    const novas = atual.procedures.filter(
+                                      proc => proc !== p
+                                    )
+                                    if (novas.length === 0) {
+                                      delete next[sel.tooth]
+                                    } else {
+                                      next[sel.tooth] = {
+                                        ...atual,
+                                        procedures: novas
+                                      }
+                                    }
+                                    return next
+                                  })
+                                }}
+                                className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
+                                aria-label={`Remover ${p}`}
+                                title="Remover procedimento"
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -369,7 +408,7 @@ export default function AtendimentoOdontologicoPage() {
               <div className="px-4 py-3 text-base font-semibold border-b">
                 Evolução / Tratamento / Prescrição
               </div>
-              <div className="px-4 pb-4 grid grid-cols-1 gap-4">
+              <div className="px-4 pb-4 grid grid-cols-1 mt-4 gap-4">
                 <div>
                   <Label htmlFor="evolucao">Evolução e Condutas</Label>
                   <Textarea
@@ -393,29 +432,17 @@ export default function AtendimentoOdontologicoPage() {
               </div>
             </div>
 
-            {/* Rodapé — Assinatura Digital + Ações */}
-            <div className="border rounded-lg">
-              <div className="px-4 py-3 text-base font-semibold border-b">
-                Assinatura Digital
-              </div>
-              <div className="px-4 pb-4">
-                <div className="border-2 border-dashed rounded-lg p-10 text-center text-slate-400">
-                  Componente de assinatura digital aqui
-                </div>
-              </div>
-            </div>
-
-            {/* Botões de ação (apenas Finalizar e Cancelar) */}
-            <div className="flex flex-wrap gap-3 justify-end pt-2">
+            {/* Botões de ação */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
               <Button
                 onClick={handleFinalizar}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
               >
                 Finalizar atendimento
               </Button>
               <Button
                 variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/10"
+                className="border-destructive text-destructive hover:bg-destructive/10 w-full sm:w-auto"
                 onClick={handleCancelar}
               >
                 Cancelar

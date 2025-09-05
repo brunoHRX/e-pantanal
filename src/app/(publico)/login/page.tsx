@@ -77,7 +77,7 @@ export default function LoginPage() {
               <div>
                 <CardTitle className="text-3xl md:text-4xl leading-tight">
                   Bem-vindo ao{' '}
-                  <span className="text-pakistan_green-700">E-Pantanal</span>
+                  <span className="text-pakistan_green-700">e-Pantanal</span>
                 </CardTitle>
                 <CardDescription className="mt-1">
                   Faça login na sua conta para continuar
