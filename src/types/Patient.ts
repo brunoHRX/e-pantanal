@@ -1,3 +1,5 @@
+import { Especialidade } from "./Especialidade";
+
 export type Patient = {
     bairro: string,
     cep: string,
@@ -35,3 +37,31 @@ export type Patient = {
     tipoSanguineo: string,
     uf: string
 };
+
+export type TriagemFormData = {
+    nomePaciente: string
+    idade: string // "X anos e Y meses"
+    prontuario: number
+
+    especialidades: Especialidade[] // << mudou para objetos
+
+    situacao: string
+    sinaisVitais: {
+        peso: string
+        temperatura: string
+        fr: string
+        sato2: string
+        pa: string
+        fc: string
+    }
+    comorbidadeOp: string
+    comorbidadeDesc?: string
+    obsComorbidade?: string
+
+    medicacao24h: string
+    alergia: 'não' | 'sim'
+    quaisAlergias?: string
+
+    coletadoPor: string
+    dataHora: string
+}

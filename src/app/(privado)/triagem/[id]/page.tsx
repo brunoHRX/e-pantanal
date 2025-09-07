@@ -10,40 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { getPatientById, Patient } from '@/services/patientService'
+import { getPatientById, Patient, TriagemFormData, Especialidade, submitTriagem } from '@/services/patientService'
 import { differenceInMonths, parseISO, isValid } from 'date-fns'
 import { X } from 'lucide-react'
 
-/** ===== Tipos ===== **/
-export type Especialidade = { id: string; nome: string }
-
-type TriagemFormData = {
-  nomePaciente: string
-  idade: string // "X anos e Y meses"
-  prontuario: string
-
-  especialidades: Especialidade[] // << mudou para objetos
-
-  situacao: string
-  sinaisVitais: {
-    peso: string
-    temperatura: string
-    fr: string
-    sato2: string
-    pa: string
-    fc: string
-  }
-  comorbidadeOp: string
-  comorbidadeDesc?: string
-  obsComorbidade?: string
-
-  medicacao24h: string
-  alergia: 'não' | 'sim'
-  quaisAlergias?: string
-
-  coletadoPor: string
-  dataHora: string
-}
 
 /** Preset inicial (futuro: virá da página de configuração / API) */
 const ESPECIALIDADES_PRESET: Especialidade[] = [
@@ -88,7 +58,7 @@ function DisplayField({ label, value }: { label: string; value?: string }) {
 /** ===== Página ===== **/
 export default function TriagemPage() {
   const usuario = 'Usuário em Sessão'
-  const [dataHora] = useState(() => new Date().toLocaleString('pt-BR'))
+  const [dataHora, setDataHora] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const params = useParams() as { id?: string }
 
@@ -105,7 +75,7 @@ export default function TriagemPage() {
     defaultValues: {
       nomePaciente: '',
       idade: '',
-      prontuario: '',
+      prontuario: 0,
       especialidades: [], // << objetos
       situacao: '',
       sinaisVitais: {
@@ -122,7 +92,7 @@ export default function TriagemPage() {
       alergia: 'não',
       quaisAlergias: '',
       coletadoPor: usuario,
-      dataHora
+      dataHora: new Date().toLocaleString('pt-BR')
     }
   })
 
@@ -132,10 +102,10 @@ export default function TriagemPage() {
   const especialidades = watch('especialidades') || []
 
   // select controlado por id do preset
-  const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] =
-    useState<string>('')
+  const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] = useState<string>('')
 
   useEffect(() => {
+    setDataHora(new Date().toLocaleString('pt-BR'));
     async function load() {
       if (!Number.isFinite(pacienteId)) {
         setError('ID do paciente não informado.')
@@ -150,9 +120,9 @@ export default function TriagemPage() {
           ...prev,
           nomePaciente: p?.nome ?? '',
           idade: idadeFmt,
-          prontuario: String(p?.id ?? ''),
+          prontuario: p?.id ?? 0,
           coletadoPor: usuario,
-          dataHora
+          dataHora: new Date().toLocaleString('pt-BR')
         }))
       } catch (e) {
         setError((e as Error).message || 'Falha ao carregar paciente.')
@@ -175,6 +145,7 @@ export default function TriagemPage() {
     })
     setEspecialidadeSelecionadaId('')
   }
+
   function removeEspecialidade(id: string) {
     setValue(
       'especialidades',
@@ -184,10 +155,16 @@ export default function TriagemPage() {
   }
 
   async function onSubmit(data: TriagemFormData) {
-    // Exemplo de payload enxuto para API:
-    // const payload = { pacienteId, ...data, especialidadesIds: data.especialidades.map(e => e.id) }
-    // await saveTriagem(payload)
-    toast.success('Triagem salva!')
+    setLoading(true)
+    setError(null)
+    try {        
+      await submitTriagem(data)
+    } catch (e) {
+      setError((e as Error).message || 'Falha ao salvar triagem.')
+    } finally {
+      setLoading(false)
+      toast.success('Triagem salva!')
+    }
   }
 
   return (

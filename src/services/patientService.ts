@@ -1,4 +1,5 @@
-import { Patient } from "@/types/Patient";
+import { Especialidade } from "@/types/Especialidade";
+import { Patient, TriagemFormData } from "@/types/Patient";
 import { API_BASE } from "@/utils/constants";
 
 export async function getAllPatients(): Promise<Patient[]> {
@@ -66,5 +67,19 @@ export async function updatePatient(id: number, data: Patient): Promise<void> {
   }
 }
 
-
-export type { Patient }
+export async function submitTriagem(data: TriagemFormData): Promise<void> {
+  // const payload = toApiPayload(data);
+  const res = await fetch(`${API_BASE}/api/Triagens`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`Erro ${res.status} ao criar triagem: ${msg}`);
+  }
+}
+export type { Patient, TriagemFormData, Especialidade }
