@@ -1,52 +1,97 @@
 'use client'
 
-import React from 'react'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition
+} from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { ColumnDef } from '@tanstack/react-table'
+import { SearchIcon, SquarePlus, Trash2, X } from 'lucide-react'
+import { toast } from 'sonner'
+
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { SearchIcon, SquarePlus, Trash2, X } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form'
+
 import { stripDiacritics } from '@/utils/functions'
-import { Procedimento, getAll, deleteElement, updateElement, createElement, getElementById } from '@/services/procedimentoService'
-import { DataTable } from "@/components/ui/data-table"
-import { ColumnDef } from '@tanstack/react-table'
-import { useForm } from 'react-hook-form'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import {
+  Procedimento,
+  getAll,
+  deleteElement,
+  updateElement,
+  createElement,
+  getElementById
+} from '@/services/procedimentoService'
+
+// ---- Tipos e mocks (troque para sua API real de Especialidades)
+type Especialidade = { id: number; nome: string }
+async function getEspecialidades(): Promise<Especialidade[]> {
+  return [
+    { id: 1, nome: 'Odontologia' },
+    { id: 2, nome: 'Ortopedia' },
+    { id: 3, nome: 'Clínico Geral' }
+  ]
+}
+// ---------------------------------------------
 
 export default function Page() {
-  const titulo = 'Painel de procedimentos';
-
+  const titulo = 'Procedimentos'
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
-  const [results, setResults] = useState<Procedimento[]>([])
+  const [results, setResults] = useState<
+    (Procedimento & { especialidade_nome?: string })[]
+  >([])
   const [resultById, setResultById] = useState<Procedimento>()
+  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const debounceRef = useRef<NodeJS.Timeout | null>(null)  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [updateMode, setUpdateMode] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [espOpen, setEspOpen] = useState(false) // controla o Popover da especialidade
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const loading = isPending
-  function clearQuery() { setQuery('') }
-  
-  const form = useForm<Procedimento & { [key: string]: any }>({
-    defaultValues: {
-      id: 0,
-      nome: '',
-      especialidade_id: 0
-    }
+
+  const form = useForm<Procedimento & { especialidade_nome?: string }>({
+    defaultValues: { id: 0, nome: '', especialidade_id: 0 }
   })
 
+  function clearQuery() {
+    setQuery('')
+  }
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
       handleSearchClick()
     }
   }
+
+  useEffect(() => {
+    ;(async () => setEspecialidades(await getEspecialidades()))()
+  }, [])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -59,7 +104,6 @@ export default function Page() {
       })
       handleSearch(query)
     }, 300)
-
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
@@ -68,13 +112,13 @@ export default function Page() {
 
   useEffect(() => {
     handleSearch(searchParams.get('q') ?? '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []) // eslint-disable-line
 
   async function handleSearch(q: string) {
     setError(null)
     try {
       const dados = await getAll()
+      const espById = new Map(especialidades.map(e => [e.id, e.nome]))
       const qNorm = stripDiacritics(q.toLowerCase().trim())
       const filtrados = qNorm
         ? dados.filter(
@@ -87,6 +131,9 @@ export default function Page() {
       setResults(
         filtrados.map(p => ({
           ...p,
+          especialidade_nome:
+            espById.get(p.especialidade_id ?? 0) ||
+            String(p.especialidade_id ?? '')
         }))
       )
     } catch (err) {
@@ -107,72 +154,76 @@ export default function Page() {
     handleSearch(query)
   }
 
-  async function handleDelete(id: number) {
-    setError(null)
-    setSearched(false)
-    try {
-      await deleteElement(id);
-    } catch (err) {
-      setError((err as Error).message)
-      setResults([])
-    } finally {
-      setSearched(true)
-    }
+  async function handleDeleteConfirmed() {
+    if (!deleteId) return
+    await toast.promise(deleteElement(deleteId), {
+      loading: 'Excluindo…',
+      success: `Procedimento #${deleteId} removido.`,
+      error: e => `Erro ao excluir: ${e?.message ?? 'tente novamente'}`
+    })
+    setDeleteId(null)
+    handleSearchClick()
   }
 
   async function handleUpdate(id: number) {
     setError(null)
-    setSearched(false)
     setUpdateMode(true)
     try {
-      const response = await getElementById(id);
-      setResultById(response);
+      const response = await getElementById(id)
+      setResultById(response)
       form.reset({
         id: response.id,
         nome: response.nome,
         especialidade_id: response.especialidade_id
       })
+      setIsModalOpen(true)
     } catch (err) {
-      setError((err as Error).message)
-      setResults([])
-    } finally {
-      setIsModalOpen(true);
-      setSearched(true)
+      toast.error(`Erro ao carregar: ${(err as Error).message}`)
     }
   }
 
-  async function handleInsert() {    
-    form.reset();
+  function handleInsert() {
+    form.reset({ id: 0, nome: '', especialidade_id: 0 })
     setUpdateMode(false)
-    setIsModalOpen(true);
+    setIsModalOpen(true)
   }
 
   async function onSubmit(data: Procedimento) {
-    setSearched(false);
-    try {
-      if (data.id != 0) {
-        await updateElement(data);
-      } else {
-        await createElement(data);
-      }    
-    } catch (err) {
-        console.log(err);            
-    } finally {
-        handleSearchClick();
-        form.reset();
-        setSearched(true);
-        setIsModalOpen(false);
+    if (data.id && data.id !== 0) {
+      await toast.promise(updateElement(data), {
+        loading: 'Salvando…',
+        success: `Procedimento #${data.id} salvo.`,
+        error: e => `Erro ao salvar: ${e?.message ?? ''}`
+      })
+    } else {
+      await toast.promise(createElement(data), {
+        loading: 'Criando…',
+        success: 'Novo procedimento cadastrado.',
+        error: e => `Erro ao criar: ${e?.message ?? ''}`
+      })
     }
+    setIsModalOpen(false)
+    handleSearchClick()
   }
 
-  const colunas = React.useMemo<ColumnDef<Procedimento>[]>(
+  const colunas = useMemo<
+    ColumnDef<Procedimento & { especialidade_nome?: string }>[]
+  >(
     () => [
-      { accessorKey: "id", header: "ID" },
-      { accessorKey: "nome", header: "Nome" },
-      { accessorKey: "especialidade_id", header: "Especialidade" },
+      { accessorKey: 'id', header: 'ID' },
+      { accessorKey: 'nome', header: 'Nome' },
       {
-        id: "actions",
-        header: "Ações",
+        accessorKey: 'especialidade_nome',
+        header: 'Especialidade',
+        cell: ({ row }) => (
+          <Badge variant="secondary">
+            {row.original.especialidade_nome ?? '-'}
+          </Badge>
+        )
+      },
+      {
+        id: 'actions',
+        header: 'Ações',
         cell: ({ row }) => (
           <div className="flex gap-2">
             <Button
@@ -185,19 +236,23 @@ export default function Page() {
             <Button
               size="sm"
               variant="destructive"
-              onClick={() => handleDelete(row.original.id)}
+              onClick={() => setDeleteId(row.original.id)}
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
-        ),
-      },
+        )
+      }
     ],
-    [router]
+    []
+  )
+
+  const espSelecionada = especialidades.find(
+    e => e.id === form.watch('especialidade_id')
   )
 
   return (
-    <div className="p-6">
+    <div className="pt-6 pr-6">
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold">{titulo}</CardTitle>
@@ -211,7 +266,7 @@ export default function Page() {
               onChange={e => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="pr-10"
-              aria-label="Campo de busca de pacientes"
+              aria-label="Campo de busca"
             />
             {query && (
               <button
@@ -229,47 +284,44 @@ export default function Page() {
             Buscar
           </Button>
 
-          <Button
-            onClick={handleInsert}
-            className="flex items-center bg-pakistan_green-600"
-          >
+          <Button onClick={handleInsert} className="flex items-center">
             <SquarePlus className="mr-1 h-4 w-4" />
-            Novo registro
+            Novo
           </Button>
         </CardContent>
       </Card>
 
       <Card className="mb-6">
-        <CardContent className="flex flex-col md:flex-row">
-          <div className="relative flex-1">
-            <DataTable<Procedimento>
-              columns={colunas}
-              data={results}
-              globalFilterAccessorKey={["nome", "id"]}
-              searchPlaceholder="Pesquisar por nome ou código de barras"
-              loading={loading}
-            />
-          </div>
+        <CardContent className="flex flex-col">
+          <DataTable
+            columns={colunas}
+            data={results}
+            globalFilterAccessorKey={['nome', 'id']}
+            searchPlaceholder="Pesquisar"
+            loading={loading}
+          />
         </CardContent>
       </Card>
 
-      
+      {/* Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md overflow-x-auto overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-center">
-              {updateMode == true ? "Editar procedimento: " + resultById?.id : "Novo procedimento"}
+              {updateMode
+                ? `Editar procedimento: ${resultById?.id}`
+                : 'Novo procedimento'}
             </DialogTitle>
           </DialogHeader>
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
-              {/* Nome */}
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
               <FormField
                 control={form.control}
                 name="nome"
-                rules={{ required: "Nome é obrigatório" }}
+                rules={{ required: 'Nome é obrigatório' }}
                 render={({ field }) => (
-                  <FormItem className="col-span-6 md:col-span-3">
+                  <FormItem>
                     <FormLabel>Nome</FormLabel>
                     <FormControl>
                       <Input {...field} />
@@ -278,23 +330,41 @@ export default function Page() {
                   </FormItem>
                 )}
               />
+
+              {/* Dropdown simples de Especialidade */}
               <FormField
                 control={form.control}
                 name="especialidade_id"
-                rules={{ required: "Especialidade é obrigatório" }}
+                rules={{ required: 'Especialidade é obrigatória' }}
                 render={({ field }) => (
-                  <FormItem className="col-span-6 md:col-span-3">
+                  <FormItem>
                     <FormLabel>Especialidade</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background
+                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={field.value ?? ''}
+                        onChange={e =>
+                          field.onChange(
+                            e.target.value ? Number(e.target.value) : 0
+                          )
+                        }
+                      >
+                        <option value={0}>Selecione…</option>
+                        {especialidades.map(esp => (
+                          <option key={esp.id} value={esp.id}>
+                            {esp.nome}
+                          </option>
+                        ))}
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <Button type="submit" disabled={loading}>
-                {loading ? "Salvando…" : "Salvar"}
+                {loading ? 'Salvando…' : 'Salvar'}
               </Button>
             </form>
           </Form>

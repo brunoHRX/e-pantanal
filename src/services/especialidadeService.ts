@@ -16,3 +16,4 @@ export async function getAll(): Promise<Especialidade[]> {
     const list: Especialidade[] = await res.json();
     return list;
 }
+
