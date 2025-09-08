@@ -399,7 +399,7 @@ export default function AtendimentoConvencionalPage() {
               <div className="px-4 pb-4 grid gap-6 md:grid-cols-2">
                 {/* Procedimentos */}
                 <div>
-                  <Label className="mb-2 block">Procedimentos</Label>
+                  <Label className="mb-2 mt-2 block">Procedimentos</Label>
                   <div className="flex flex-wrap gap-2">
                     {PROCEDIMENTOS_PRESETS.map(p => {
                       const active = procedimentos.includes(p)
@@ -443,7 +443,9 @@ export default function AtendimentoConvencionalPage() {
 
                 {/* CIDs */}
                 <div>
-                  <Label className="mb-2 block">Adicionar CID (máx. 5)</Label>
+                  <Label className="mb-2 mt-2 block">
+                    Adicionar CID (máx. 5)
+                  </Label>
                   <Input
                     placeholder="Busque por código (ex: J06.9) ou descrição (ex: cefaleia)"
                     value={cidQuery}
@@ -501,10 +503,10 @@ export default function AtendimentoConvencionalPage() {
 
             {/* Section 3 — Evolução / Prescrição / Solicitação de Exames */}
             <section className="border rounded-lg">
-              <div className="px-4 py-3 text-base font-semibold border-b">
+              <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
                 Evolução / Prescrição / Exames
               </div>
-              <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="px-4 pb-4 grid mt-2 grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="evolucao">Evolução</Label>
                   <Textarea

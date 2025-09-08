@@ -62,11 +62,13 @@ function getQuadrantFromFDI(num: number) {
 export type OdontogramaQuadranteProps = {
   numeros: number[]
   titulo: string
-  /** 'auto' = responsivo; também aceita 'normal' | 'grande' para forçar */
+  /** 'auto' = responsivo; também aceita 'normal' | 'grande' */
   tamanho?: 'auto' | 'normal' | 'grande'
   outlineGroup?: boolean
   selections?: ToothSelectionsMap
   onChange?: (partial: ToothSelectionsMap) => void
+  /** Quando true, o dente NÃO abre modal (somente visual) */
+  readOnlyTooth?: boolean
 }
 
 export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
@@ -75,7 +77,8 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
   tamanho = 'auto',
   outlineGroup = false,
   selections = {},
-  onChange
+  onChange,
+  readOnlyTooth = false
 }) => {
   const [openDente, setOpenDente] = useState<number | null>(null)
   const [tempFaces, setTempFaces] = useState<FaceKey[]>([])
@@ -116,17 +119,14 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
     setOpenDente(null)
   }
 
-  // ===== Tamanhos responsivos (sem overflow) =====
-  // dente SVG (imagem grande): escala por breakpoint
+  // ===== tamanhos responsivos =====
   const denteSize =
     tamanho === 'grande'
       ? 'w-14 h-16 sm:w-16 sm:h-20'
       : tamanho === 'normal'
       ? 'w-10 h-12 sm:w-12 sm:h-14'
-      : // auto (responsivo)
-        'w-9 h-10 xs:w-10 xs:h-12 sm:w-12 sm:h-14 md:w-14 md:h-16'
+      : 'w-9 h-10 xs:w-10 xs:h-12 sm:w-12 sm:h-14 md:w-14 md:h-16'
 
-  // face (mini imagem): escala por breakpoint
   const faceSize =
     tamanho === 'grande'
       ? 'w-10 h-10 sm:w-11 sm:h-11'
@@ -134,7 +134,6 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
       ? 'w-7 h-7 sm:w-8 sm:h-8'
       : 'w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10'
 
-  // largura mínima do “botão do dente” (evita quebrar mas não força demais)
   const minWidthClass =
     tamanho === 'grande'
       ? 'min-w-[56px] sm:min-w-[64px]'
@@ -150,7 +149,6 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
         </span>
       )}
 
-      {/* Linha de dentes – gap ajustado por breakpoint */}
       <div className="flex flex-row gap-1.5 sm:gap-2.5 md:gap-3">
         {numeros.map(num => {
           const sel = selections[num]
@@ -164,13 +162,16 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
             <div key={num} className="flex flex-col items-center">
               <span className="text-[10px] sm:text-xs mb-1">{num}</span>
 
-              {/* Botão do dente */}
               <button
                 type="button"
-                onClick={() => openForTooth(num)}
+                onClick={() => {
+                  if (!readOnlyTooth) openForTooth(num)
+                }}
+                aria-disabled={readOnlyTooth}
                 className={[
                   'group rounded-lg flex flex-col items-center focus:outline-none transition',
                   minWidthClass,
+                  readOnlyTooth ? 'cursor-default' : 'cursor-pointer',
                   outlineGroup && selecionado
                     ? 'outline-2 outline-teal-500'
                     : 'outline-none'

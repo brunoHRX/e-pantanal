@@ -8,24 +8,21 @@ import {
 import { Button } from '@/components/ui/button'
 
 export type OdontogramaProps = {
-  /** Estado controlado vindo do pai (mapa por número do dente) */
+  /** Estado controlado (mapa por número do dente) */
   value?: ToothSelectionsMap
-  /** Disparado quando o usuário salva alterações em um dente */
+  /** Disparado quando houver mudanças nos dentes (parciais por número) */
   onChange?: (next: ToothSelectionsMap) => void
   /** Tipo inicial apenas visual */
   defaultTipo?: 'permanente' | 'deciduos'
+  /** Quando true: permite alternar permanente/decíduos, mas bloqueia CLIQUE NO DENTE */
+  readOnlyTooth?: boolean
 }
 
-/**
- * Componente controlado:
- * - usa `value` como fonte da verdade
- * - chama `onChange` somente em handlers (nunca durante render)
- * - tamanhos RESPONSIVOS no próprio componente (sem causar scroll)
- */
 export default function Odontograma({
   value,
   onChange,
-  defaultTipo = 'permanente'
+  defaultTipo = 'permanente',
+  readOnlyTooth = false
 }: OdontogramaProps) {
   const [tipo, setTipo] = useState<'permanente' | 'deciduos'>(defaultTipo)
 
@@ -53,7 +50,7 @@ export default function Odontograma({
   }, [tipo])
 
   return (
-    <div className="w-full mt-2 flex flex-col items-center gap-4">
+    <div className="w-full flex flex-col items-center gap-4">
       {/* Alternância */}
       <div className="flex gap-2 mb-2">
         <Button
@@ -72,16 +69,17 @@ export default function Odontograma({
         </Button>
       </div>
 
-      {/* Quadrantes em 2 linhas (responsivo) */}
+      {/* Quadrantes (responsivos) */}
       <div className="space-y-3 w-full">
         <div className="flex flex-row justify-center items-start gap-2 sm:gap-4 md:gap-6">
           <OdontogramaQuadrante
             numeros={grupos[0].numeros}
             titulo={grupos[0].titulo}
-            tamanho="auto" // <= responsivo
+            tamanho="auto"
             outlineGroup
             selections={value ?? {}}
             onChange={applyPartial}
+            readOnlyTooth={readOnlyTooth}
           />
           <div className="hidden sm:block w-[1px] bg-gray-300 h-[90px] sm:h-[100px] md:h-[110px] rounded-full mx-1" />
           <OdontogramaQuadrante
@@ -91,6 +89,7 @@ export default function Odontograma({
             outlineGroup
             selections={value ?? {}}
             onChange={applyPartial}
+            readOnlyTooth={readOnlyTooth}
           />
         </div>
 
@@ -102,6 +101,7 @@ export default function Odontograma({
             outlineGroup
             selections={value ?? {}}
             onChange={applyPartial}
+            readOnlyTooth={readOnlyTooth}
           />
           <div className="hidden sm:block w-[1px] bg-gray-300 h-[90px] sm:h-[100px] md:h-[110px] rounded-full mx-1" />
           <OdontogramaQuadrante
@@ -111,6 +111,7 @@ export default function Odontograma({
             outlineGroup
             selections={value ?? {}}
             onChange={applyPartial}
+            readOnlyTooth={readOnlyTooth}
           />
         </div>
       </div>
