@@ -44,7 +44,6 @@ import {
   updateElement as updateEspecialidade,
   deleteElement as deleteEspecialidade
 } from '@/services/especialidadeService'
-import { Checkbox } from '@/components/ui/checkbox'
 
 export default function PageEspecialidades() {
   const titulo = 'Especialidades'

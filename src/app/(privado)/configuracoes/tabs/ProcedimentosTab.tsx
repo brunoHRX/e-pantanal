@@ -1,3 +1,6 @@
+// =============================================
+// File: app/(config)/especialidades/page.tsx
+// =============================================
 'use client'
 
 import React, {
@@ -11,11 +14,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { ColumnDef } from '@tanstack/react-table'
 import { SearchIcon, SquarePlus, Trash2, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from 'sonner';
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import {
@@ -36,47 +38,40 @@ import {
 import { stripDiacritics } from '@/utils/functions'
 import {
   Procedimento,
-  getAll,
-  deleteElement,
-  updateElement,
-  createElement,
-  getElementById
+  getAll as getAllProcedimentos,
+  getElementById as getProcedimentoById,
+  createElement as createProcedimento,
+  updateElement as updateProcedimento,
+  deleteElement as deleteProcedimento
 } from '@/services/procedimentoService'
+import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
 
-// ---- Tipos e mocks (troque para sua API real de Especialidades)
-type Especialidade = { id: number; nome: string }
-async function getEspecialidades(): Promise<Especialidade[]> {
-  return [
-    { id: 1, nome: 'Odontologia' },
-    { id: 2, nome: 'Ortopedia' },
-    { id: 3, nome: 'Clínico Geral' }
-  ]
-}
-// ---------------------------------------------
-
-export default function Page() {
+export default function PageEspecialidades() {
   const titulo = 'Procedimentos'
+  const tituloUpdate = 'Editar procedimento'
+  const tituloInsert = 'Novo procedimento'
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
-  const [results, setResults] = useState<
-    (Procedimento & { especialidade_nome?: string })[]
-  >([])
-  const [resultById, setResultById] = useState<Procedimento>()
+  const [results, setResults] = useState<Procedimento[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
+  const [resultById, setResultById] = useState<Procedimento>()
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [updateMode, setUpdateMode] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [espOpen, setEspOpen] = useState(false) // controla o Popover da especialidade
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const loading = isPending
 
-  const form = useForm<Procedimento & { especialidade_nome?: string }>({
-    defaultValues: { id: 0, nome: '', especialidade_id: 0 }
+  const form = useForm<Procedimento>({
+    defaultValues: { 
+      id: 0, 
+      nome: '',
+      especialidade_id: 0
+    }
   })
 
   function clearQuery() {
@@ -90,7 +85,9 @@ export default function Page() {
   }
 
   useEffect(() => {
-    ;(async () => setEspecialidades(await getEspecialidades()))()
+    // on mount: run an initial search
+    handleSearch(searchParams.get('q') ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -110,15 +107,13 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
-  useEffect(() => {
-    handleSearch(searchParams.get('q') ?? '')
-  }, []) // eslint-disable-line
-
   async function handleSearch(q: string) {
     setError(null)
     try {
-      const dados = await getAll()
-      const espById = new Map(especialidades.map(e => [e.id, e.nome]))
+      const dadosEspecialidades = await getAllEspecialidades()
+      setEspecialidades(dadosEspecialidades)
+      
+      const dados = await getAllProcedimentos()
       const qNorm = stripDiacritics(q.toLowerCase().trim())
       const filtrados = qNorm
         ? dados.filter(
@@ -128,14 +123,7 @@ export default function Page() {
           )
         : dados
 
-      setResults(
-        filtrados.map(p => ({
-          ...p,
-          especialidade_nome:
-            espById.get(p.especialidade_id ?? 0) ||
-            String(p.especialidade_id ?? '')
-        }))
-      )
+      setResults(filtrados)
     } catch (err) {
       setError((err as Error).message)
       setResults([])
@@ -144,35 +132,38 @@ export default function Page() {
     }
   }
 
-  function handleSearchClick() {
+  async function handleSearchClick() {
     startTransition(() => {
       const sp = new URLSearchParams(Array.from(searchParams.entries()))
       if (query) sp.set('q', query)
       else sp.delete('q')
       router.replace(`?${sp.toString()}`)
     })
-    handleSearch(query)
+    await handleSearch(query)
   }
 
   async function handleDeleteConfirmed() {
     if (!deleteId) return
-    await toast.promise(deleteElement(deleteId), {
-      loading: 'Excluindo…',
-      success: `Procedimento #${deleteId} removido.`,
-      error: e => `Erro ao excluir: ${e?.message ?? 'tente novamente'}`
-    })
-    setDeleteId(null)
-    handleSearchClick()
+    
+    try {
+      await deleteProcedimento(deleteId)        
+    } catch (err) {
+      toast.error(`Erro ao excluir registro`)
+    } finally {
+      toast.success(`Registro excluído`)
+      setDeleteId(null)
+      await handleSearchClick()
+    }
   }
 
   async function handleUpdate(id: number) {
     setError(null)
     setUpdateMode(true)
     try {
-      const response = await getElementById(id)
+      const response = await getProcedimentoById(id)
       setResultById(response)
-      form.reset({
-        id: response.id,
+      form.reset({ 
+        id: response.id, 
         nome: response.nome,
         especialidade_id: response.especialidade_id
       })
@@ -183,44 +174,34 @@ export default function Page() {
   }
 
   function handleInsert() {
-    form.reset({ id: 0, nome: '', especialidade_id: 0 })
+    form.reset({ id: 0, nome: '' })
     setUpdateMode(false)
     setIsModalOpen(true)
   }
 
   async function onSubmit(data: Procedimento) {
-    if (data.id && data.id !== 0) {
-      await toast.promise(updateElement(data), {
-        loading: 'Salvando…',
-        success: `Procedimento #${data.id} salvo.`,
-        error: e => `Erro ao salvar: ${e?.message ?? ''}`
-      })
-    } else {
-      await toast.promise(createElement(data), {
-        loading: 'Criando…',
-        success: 'Novo procedimento cadastrado.',
-        error: e => `Erro ao criar: ${e?.message ?? ''}`
-      })
+    setError(null)
+    try {
+      if (data.id && data.id !== 0) {
+        await updateProcedimento(data)        
+      } else {
+        await createProcedimento(data)
+      }
+    } catch (err) {
+      toast.error(`Erro ao enviar registro`)
+    } finally {
+      toast.success(`Registro enviado`)
+      form.reset()
+      await handleSearchClick()
+      setIsModalOpen(false)
     }
-    setIsModalOpen(false)
-    handleSearchClick()
   }
 
-  const colunas = useMemo<
-    ColumnDef<Procedimento & { especialidade_nome?: string }>[]
-  >(
+  const colunas = useMemo<ColumnDef<Procedimento>[]>(
     () => [
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'nome', header: 'Nome' },
-      {
-        accessorKey: 'especialidade_nome',
-        header: 'Especialidade',
-        cell: ({ row }) => (
-          <Badge variant="secondary">
-            {row.original.especialidade_nome ?? '-'}
-          </Badge>
-        )
-      },
+      { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
       {
         id: 'actions',
         header: 'Ações',
@@ -245,10 +226,6 @@ export default function Page() {
       }
     ],
     []
-  )
-
-  const espSelecionada = especialidades.find(
-    e => e.id === form.watch('especialidade_id')
   )
 
   return (
@@ -293,13 +270,7 @@ export default function Page() {
 
       <Card className="mb-6">
         <CardContent className="flex flex-col">
-          <DataTable
-            columns={colunas}
-            data={results}
-            globalFilterAccessorKey={['nome', 'id']}
-            searchPlaceholder="Pesquisar"
-            loading={loading}
-          />
+          <DataTable columns={colunas} data={results} loading={loading} />
         </CardContent>
       </Card>
 
@@ -309,8 +280,8 @@ export default function Page() {
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-center">
               {updateMode
-                ? `Editar procedimento: ${resultById?.id}`
-                : 'Novo procedimento'}
+                ? `${tituloUpdate}: ${resultById?.id}`
+                : `${tituloInsert}`}
             </DialogTitle>
           </DialogHeader>
 
@@ -331,7 +302,6 @@ export default function Page() {
                 )}
               />
 
-              {/* Dropdown simples de Especialidade */}
               <FormField
                 control={form.control}
                 name="especialidade_id"
@@ -389,6 +359,28 @@ export default function Page() {
         <p className="text-center text-sm text-muted-foreground">
           Nenhum registro encontrado.
         </p>
+      )}
+
+      {/* Confirmação de exclusão (simples) */}
+      {deleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-background p-4 shadow-2xl">
+            <h3 className="mb-2 text-base font-semibold">
+              Excluir especialidade
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Tem certeza que deseja excluir o registro #{deleteId}?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteId(null)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteConfirmed}>
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
