@@ -1,1 +1,5 @@
-export type Especialidade = { id: string; nome: string }
+export type Especialidade = { 
+    id: number,
+    nome: string,
+    ativo: boolean,
+}

@@ -32,12 +32,12 @@ const EspecialidadesTab = dynamic(() => import('./tabs/EspecialidadeTab'), {
 // })
 
 const tabs = [
+  { id: 'materiais', label: 'Materiais' },
   { id: 'procedimentos', label: 'Procedimentos' },
   { id: 'especialidades', label: 'Especialidades' },
-  { id: 'profissionais', label: 'Profissionais' },
+  { id: 'profissionais', label: 'Consultórios' },
+  { id: 'medicamentos', label: 'Medicamentos' },
   { id: 'usuarios', label: 'Usuários' },
-  { id: 'permissoes', label: 'Permissões' },
-  { id: 'inventario', label: 'Inventário' }
 ]
 
 export default function ConfiguracoesPage() {

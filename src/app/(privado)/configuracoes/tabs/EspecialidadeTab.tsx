@@ -14,7 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { ColumnDef } from '@tanstack/react-table'
 import { SearchIcon, SquarePlus, Trash2, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from 'sonner';
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,8 @@ import {
   createElement as createEspecialidade,
   updateElement as updateEspecialidade,
   deleteElement as deleteEspecialidade
-} from '@/services/especialidadeMockService'
+} from '@/services/especialidadeService'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function PageEspecialidades() {
   const titulo = 'Especialidades'
@@ -121,25 +122,28 @@ export default function PageEspecialidades() {
     }
   }
 
-  function handleSearchClick() {
+  async function handleSearchClick() {
     startTransition(() => {
       const sp = new URLSearchParams(Array.from(searchParams.entries()))
       if (query) sp.set('q', query)
       else sp.delete('q')
       router.replace(`?${sp.toString()}`)
     })
-    handleSearch(query)
+    await handleSearch(query)
   }
 
   async function handleDeleteConfirmed() {
     if (!deleteId) return
-    await toast.promise(deleteEspecialidade(deleteId), {
-      loading: 'Excluindo…',
-      success: `Especialidade #${deleteId} removida.`,
-      error: e => `Erro ao excluir: ${e?.message ?? 'tente novamente'}`
-    })
-    setDeleteId(null)
-    handleSearchClick()
+    
+    try {
+      await deleteEspecialidade(deleteId)        
+    } catch (err) {
+      toast.error(`Erro ao excluir registro`)
+    } finally {
+      toast.success(`Registro excluído`)
+      setDeleteId(null)
+      await handleSearchClick()
+    }
   }
 
   async function handleUpdate(id: number) {
@@ -162,21 +166,21 @@ export default function PageEspecialidades() {
   }
 
   async function onSubmit(data: Especialidade) {
-    if (data.id && data.id !== 0) {
-      await toast.promise(updateEspecialidade(data), {
-        loading: 'Salvando…',
-        success: `Especialidade #${data.id} salva.`,
-        error: e => `Erro ao salvar: ${e?.message ?? ''}`
-      })
-    } else {
-      await toast.promise(createEspecialidade(data), {
-        loading: 'Criando…',
-        success: 'Nova especialidade cadastrada.',
-        error: e => `Erro ao criar: ${e?.message ?? ''}`
-      })
+    setError(null)
+    try {
+      if (data.id && data.id !== 0) {
+        await updateEspecialidade(data)        
+      } else {
+        await createEspecialidade(data)
+      }
+    } catch (err) {
+      toast.error(`Erro ao enviar registro`)
+    } finally {
+      toast.success(`Registro enviado`)
+      form.reset()
+      await handleSearchClick()
+      setIsModalOpen(false)
     }
-    setIsModalOpen(false)
-    handleSearchClick()
   }
 
   const colunas = useMemo<ColumnDef<Especialidade>[]>(
