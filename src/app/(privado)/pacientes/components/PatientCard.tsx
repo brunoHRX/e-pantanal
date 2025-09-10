@@ -6,8 +6,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO, isValid, differenceInYears } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { id, ptBR } from 'date-fns/locale'
 import { Patient } from '@/types/Patient'
+import { toast } from 'sonner'
+import { startAtendimento } from '@/services/patientService'
 
 interface PatientCardProps {
   paciente: Patient
@@ -60,10 +62,20 @@ export const PatientCard: React.FC<PatientCardProps> = ({
   const handleEdit = () => {
     if (onUpdate && typeof paciente?.id === 'number') onUpdate(paciente.id)
   }
+
   const handleKey = (e: KeyboardEvent) => {
     if ((e.key === 'Enter' || e.key === ' ') && clickToEdit) {
       e.preventDefault()
       handleEdit()
+    }
+  }
+
+  async function handleAtendimento (id: number) {
+    try {
+      await startAtendimento(id)
+      toast.success("Atendimento iniciado.")
+    } catch (err) {
+      toast.error("Paciente já iniciou atendimento.")
     }
   }
 
@@ -129,11 +141,11 @@ export const PatientCard: React.FC<PatientCardProps> = ({
               variant="outline"
               onClick={e => {
                 e.stopPropagation()
-                handleEdit()
+                handleAtendimento(paciente.id)
               }}
               disabled={!(onUpdate && typeof paciente?.id === 'number')}
             >
-              Atualizar Cadastro
+              Iniciar atendimento
             </Button>
           </div>
         </div>

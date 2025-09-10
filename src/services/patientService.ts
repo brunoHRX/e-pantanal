@@ -1,6 +1,6 @@
 import { Especialidade } from "@/types/Especialidade";
 import { Patient, TriagemFormData } from "@/types/Patient";
-import { API_BASE } from "@/utils/constants";
+import { API_BASE, headers } from "@/utils/constants";
 
 export async function getAllPatients(): Promise<Patient[]> {
   const res = await fetch(`${API_BASE}/api/Pacientes`, {
@@ -34,7 +34,7 @@ export async function getPatientById(id: string): Promise<Patient> {
 }
 
 // cria paciente
-export async function createPatient(data: Patient): Promise<void> {
+export async function createPatient(data: Patient): Promise<Patient> {
   // const payload = toApiPayload(data);
   const res = await fetch(`${API_BASE}/api/Pacientes`, {
     method: "POST",
@@ -48,6 +48,8 @@ export async function createPatient(data: Patient): Promise<void> {
     const msg = await res.text();
     throw new Error(`Erro ${res.status} ao criar paciente: ${msg}`);
   }
+  const paciente: Patient = await res.json();
+  return paciente; 
 }
 
 // atualiza paciente
@@ -82,4 +84,13 @@ export async function submitTriagem(data: TriagemFormData): Promise<void> {
     throw new Error(`Erro ${res.status} ao criar triagem: ${msg}`);
   }
 }
+
+export async function startAtendimento(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/Pacientes/atendimento/${id}`, { headers: headers(), });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`Erro ${res.status} ao criar atendimento: ${msg}`);
+  }
+}
+
 export type { Patient, TriagemFormData, Especialidade }

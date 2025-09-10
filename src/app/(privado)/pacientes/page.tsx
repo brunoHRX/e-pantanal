@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PatientCard } from './components/PatientCard'
 import { SearchIcon, SquarePlus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   getAllPatients,
   Patient /* TODO: troque por getPatients({ q, page, pageSize }) quando tiver no backend */

@@ -30,7 +30,7 @@ import {
   SelectItem
 } from '@/components/ui/select'
 import { useEffect, useState } from 'react'
-import { Patient, createPatient, getPatientById, updatePatient } from '@/services/patientService'
+import { Patient, createPatient, getPatientById, startAtendimento, updatePatient } from '@/services/patientService'
 
 const SEX_OPTIONS = ['Masculino', 'Feminino', 'Outro']
 const COR_RACA_OPCOES = [
@@ -114,6 +114,7 @@ export default function NovoPacientePage() {
   const router = useRouter()
   const id = searchParams.get('id')
   const [loading, setLoading] = useState(false)
+  const [inicarAtendimento, setInicarAtendimento] = useState(false)
   const form = useForm<Patient & { [key: string]: any }>({
     defaultValues: {
       nome: '',
@@ -174,9 +175,17 @@ export default function NovoPacientePage() {
   async function onSubmit(data: Patient) {
     setLoading(true)
     try {
-      console.log(data);      
-      if (id) await updatePatient(data.id, data)
-      else await createPatient(data)
+      var pacienteId: number;
+      if (id) {
+        pacienteId = data.id;
+        await updatePatient(data.id, data)
+      } else 
+      {
+        const res = await createPatient(data)
+        pacienteId = res.id;
+      }
+
+      await startAtendimento(pacienteId)
       router.push('/pacientes')
     } catch (err) {
       console.error(err)
@@ -804,6 +813,14 @@ export default function NovoPacientePage() {
                       </FormItem>
                     )}
                   />
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Checkbox
+                    onCheckedChange={v =>
+                      setInicarAtendimento(!!v)
+                    }
+                  />
+                  <Label>Iniciar atendimento</Label>
                 </div>
               </div>
             </CardContent>
