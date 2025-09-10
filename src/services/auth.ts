@@ -7,7 +7,14 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   token: string;
-  // acrescente aqui outros campos que sua API retorne, ex: expiresIn?: number
+  usuario: {
+    id: number;
+    usuario: string;
+    email: string;
+    especialidade_id: number;
+    email_verificacao: string | null;
+    ativo: boolean;
+  };
 }
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
