@@ -37,26 +37,22 @@ import {
 
 import { stripDiacritics } from '@/utils/functions'
 import {
-  Procedimento,
-  getAll as getAllProcedimentos,
-  getElementById as getProcedimentoById,
-  createElement as createProcedimento,
-  updateElement as updateProcedimento,
-  deleteElement as deleteProcedimento
-} from '@/services/procedimentoService'
-import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
+  Medicamento,
+  getAll as getAllMedicamentos,
+  getElementById as getMedicamentoById,
+  createElement as createMedicamento,
+  updateElement as updateMedicamento,
+  deleteElement as deleteMedicamento
+} from '@/services/medicamentoService'
 
-export default function PageEspecialidades() {
-  const titulo = 'Procedimentos'
-  const tituloUpdate = 'Editar procedimento'
-  const tituloInsert = 'Novo procedimento'
+export default function PageMedicamentos() {
+  const titulo = 'Medicamentos'
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
-  const [results, setResults] = useState<Procedimento[]>([])
-  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
-  const [resultById, setResultById] = useState<Procedimento>()
+  const [results, setResults] = useState<Medicamento[]>([])
+  const [resultById, setResultById] = useState<Medicamento>()
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -66,12 +62,8 @@ export default function PageEspecialidades() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const loading = isPending
 
-  const form = useForm<Procedimento>({
-    defaultValues: { 
-      id: 0, 
-      nome: '',
-      especialidade_id: 0
-    }
+  const form = useForm<Medicamento>({
+    defaultValues: { id: 0, nome: '' }
   })
 
   function clearQuery() {
@@ -110,10 +102,7 @@ export default function PageEspecialidades() {
   async function handleSearch(q: string) {
     setError(null)
     try {
-      const dadosEspecialidades = await getAllEspecialidades()
-      setEspecialidades(dadosEspecialidades)
-      
-      const dados = await getAllProcedimentos()
+      const dados = await getAllMedicamentos()
       const qNorm = stripDiacritics(q.toLowerCase().trim())
       const filtrados = qNorm
         ? dados.filter(
@@ -146,7 +135,7 @@ export default function PageEspecialidades() {
     if (!deleteId) return
     
     try {
-      await deleteProcedimento(deleteId)        
+      await deleteMedicamento(deleteId)        
     } catch (err) {
       toast.error(`Erro ao excluir registro`)
     } finally {
@@ -160,13 +149,9 @@ export default function PageEspecialidades() {
     setError(null)
     setUpdateMode(true)
     try {
-      const response = await getProcedimentoById(id)
+      const response = await getMedicamentoById(id)
       setResultById(response)
-      form.reset({ 
-        id: response.id, 
-        nome: response.nome,
-        especialidade_id: response.especialidade_id
-      })
+      form.reset({ id: response.id, nome: response.nome })
       setIsModalOpen(true)
     } catch (err) {
       toast.error(`Erro ao carregar: ${(err as Error).message}`)
@@ -174,18 +159,18 @@ export default function PageEspecialidades() {
   }
 
   function handleInsert() {
-    form.reset({ id: 0, nome: '', especialidade_id: 0 })
+    form.reset({ id: 0, nome: '' })
     setUpdateMode(false)
     setIsModalOpen(true)
   }
 
-  async function onSubmit(data: Procedimento) {
+  async function onSubmit(data: Medicamento) {
     setError(null)
     try {
       if (data.id && data.id !== 0) {
-        await updateProcedimento(data)        
+        await updateMedicamento(data)        
       } else {
-        await createProcedimento(data)
+        await createMedicamento(data)
       }
     } catch (err) {
       toast.error(`Erro ao enviar registro`)
@@ -197,11 +182,10 @@ export default function PageEspecialidades() {
     }
   }
 
-  const colunas = useMemo<ColumnDef<Procedimento>[]>(
+  const colunas = useMemo<ColumnDef<Medicamento>[]>(
     () => [
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'nome', header: 'Nome' },
-      { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
       {
         id: 'actions',
         header: 'Ações',
@@ -280,8 +264,8 @@ export default function PageEspecialidades() {
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-center">
               {updateMode
-                ? `${tituloUpdate}: ${resultById?.id}`
-                : `${tituloInsert}`}
+                ? `Editar medicamento: ${resultById?.id}`
+                : 'Novo medicamento'}
             </DialogTitle>
           </DialogHeader>
 
@@ -296,37 +280,6 @@ export default function PageEspecialidades() {
                     <FormLabel>Nome</FormLabel>
                     <FormControl>
                       <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="especialidade_id"
-                rules={{ required: 'Especialidade é obrigatória' }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Especialidade</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background
-                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        value={field.value ?? ''}
-                        onChange={e =>
-                          field.onChange(
-                            e.target.value ? Number(e.target.value) : 0
-                          )
-                        }
-                      >
-                        <option value={0}>Selecione…</option>
-                        {especialidades.map(esp => (
-                          <option key={esp.id} value={esp.id}>
-                            {esp.nome}
-                          </option>
-                        ))}
-                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -366,7 +319,7 @@ export default function PageEspecialidades() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-xl bg-background p-4 shadow-2xl">
             <h3 className="mb-2 text-base font-semibold">
-              Excluir procedimento
+              Excluir medicamento
             </h3>
             <p className="mb-4 text-sm text-muted-foreground">
               Tem certeza que deseja excluir o registro #{deleteId}?

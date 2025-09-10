@@ -17,25 +17,27 @@ import { cn } from '@/lib/utils'
 const ProcedimentosTab = dynamic(() => import('./tabs/ProcedimentosTab'), {
   ssr: false
 })
-const EspecialidadesTab = dynamic(() => import('./tabs/EspecialidadeTab'), {
+const EspecialidadesTab = dynamic(() => import('./tabs/EspecialidadesTab'), {
   ssr: false
 })
-// const ProfissionaisTab = dynamic(() => import('./tabs/ProfissionaisTab'), {
-//   ssr: false
-// })
-// const UsuariosTab = dynamic(() => import('./tabs/UsuariosTab'), { ssr: false })
-// const PermissoesTab = dynamic(() => import('./tabs/PermissoesTab'), {
-//   ssr: false
-// })
-// const InventarioTab = dynamic(() => import('./tabs/InventarioTab'), {
-//   ssr: false
-// })
+const FilasTab = dynamic(() => import('./tabs/FilasTab'), {
+  ssr: false
+})
+const ConsultoriosTab = dynamic(() => import('./tabs/ConsultoriosTab'), {
+  ssr: false
+})
+const MedicamentosTab = dynamic(() => import('./tabs/MedicamentosTab'), {
+  ssr: false
+})
+const UsuariosTab = dynamic(() => import('./tabs/UsuariosTab'), {
+  ssr: false
+})
 
 const tabs = [
-  { id: 'materiais', label: 'Materiais' },
   { id: 'procedimentos', label: 'Procedimentos' },
   { id: 'especialidades', label: 'Especialidades' },
-  { id: 'profissionais', label: 'Consultórios' },
+  { id: 'filas', label: 'Filas' },
+  { id: 'consultorios', label: 'Consultórios' },
   { id: 'medicamentos', label: 'Medicamentos' },
   { id: 'usuarios', label: 'Usuários' },
 ]
@@ -58,14 +60,14 @@ export default function ConfiguracoesPage() {
         return ProcedimentosTab
       case 'especialidades':
         return EspecialidadesTab
-      // case 'profissionais':
-      //   return ProfissionaisTab
-      // case 'usuarios':
-      //   return UsuariosTab
-      // case 'permissoes':
-      //   return PermissoesTab
-      // case 'inventario':
-      //   return InventarioTab
+      case 'filas':
+        return FilasTab
+      case 'consultorios':
+        return ConsultoriosTab
+      case 'medicamentos':
+        return MedicamentosTab
+      case 'usuarios':
+        return UsuariosTab
       default:
         return ProcedimentosTab
     }

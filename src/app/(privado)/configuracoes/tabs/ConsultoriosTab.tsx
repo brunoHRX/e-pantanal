@@ -37,26 +37,26 @@ import {
 
 import { stripDiacritics } from '@/utils/functions'
 import {
-  Procedimento,
-  getAll as getAllProcedimentos,
-  getElementById as getProcedimentoById,
-  createElement as createProcedimento,
-  updateElement as updateProcedimento,
-  deleteElement as deleteProcedimento
-} from '@/services/procedimentoService'
+  Consultorio,
+  getAll as getAllConsultorios,
+  getElementById as getConsultorioById,
+  createElement as createConsultorio,
+  updateElement as updateConsultorio,
+  deleteElement as deleteConsultorio
+} from '@/services/consultoriosService'
 import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
 
-export default function PageEspecialidades() {
-  const titulo = 'Procedimentos'
-  const tituloUpdate = 'Editar procedimento'
-  const tituloInsert = 'Novo procedimento'
+export default function PageConsultorios() {
+  const titulo = 'Consultórios'
+  const tituloUpdate = 'Editar consultório'
+  const tituloInsert = 'Novo consultório'
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
-  const [results, setResults] = useState<Procedimento[]>([])
+  const [results, setResults] = useState<Consultorio[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
-  const [resultById, setResultById] = useState<Procedimento>()
+  const [resultById, setResultById] = useState<Consultorio>()
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -66,11 +66,11 @@ export default function PageEspecialidades() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const loading = isPending
 
-  const form = useForm<Procedimento>({
+  const form = useForm<Consultorio>({
     defaultValues: { 
       id: 0, 
       nome: '',
-      especialidade_id: 0
+      especialidade_id: 0,
     }
   })
 
@@ -113,7 +113,7 @@ export default function PageEspecialidades() {
       const dadosEspecialidades = await getAllEspecialidades()
       setEspecialidades(dadosEspecialidades)
       
-      const dados = await getAllProcedimentos()
+      const dados = await getAllConsultorios()
       const qNorm = stripDiacritics(q.toLowerCase().trim())
       const filtrados = qNorm
         ? dados.filter(
@@ -146,7 +146,7 @@ export default function PageEspecialidades() {
     if (!deleteId) return
     
     try {
-      await deleteProcedimento(deleteId)        
+      await deleteConsultorio(deleteId)        
     } catch (err) {
       toast.error(`Erro ao excluir registro`)
     } finally {
@@ -160,7 +160,7 @@ export default function PageEspecialidades() {
     setError(null)
     setUpdateMode(true)
     try {
-      const response = await getProcedimentoById(id)
+      const response = await getConsultorioById(id)
       setResultById(response)
       form.reset({ 
         id: response.id, 
@@ -179,13 +179,13 @@ export default function PageEspecialidades() {
     setIsModalOpen(true)
   }
 
-  async function onSubmit(data: Procedimento) {
+  async function onSubmit(data: Consultorio) {
     setError(null)
     try {
       if (data.id && data.id !== 0) {
-        await updateProcedimento(data)        
+        await updateConsultorio(data)        
       } else {
-        await createProcedimento(data)
+        await createConsultorio(data)
       }
     } catch (err) {
       toast.error(`Erro ao enviar registro`)
@@ -197,7 +197,7 @@ export default function PageEspecialidades() {
     }
   }
 
-  const colunas = useMemo<ColumnDef<Procedimento>[]>(
+  const colunas = useMemo<ColumnDef<Consultorio>[]>(
     () => [
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'nome', header: 'Nome' },
@@ -366,7 +366,7 @@ export default function PageEspecialidades() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-xl bg-background p-4 shadow-2xl">
             <h3 className="mb-2 text-base font-semibold">
-              Excluir procedimento
+              Excluir consultório
             </h3>
             <p className="mb-4 text-sm text-muted-foreground">
               Tem certeza que deseja excluir o registro #{deleteId}?

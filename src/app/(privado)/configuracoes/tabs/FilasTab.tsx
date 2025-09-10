@@ -37,26 +37,27 @@ import {
 
 import { stripDiacritics } from '@/utils/functions'
 import {
-  Procedimento,
-  getAll as getAllProcedimentos,
-  getElementById as getProcedimentoById,
-  createElement as createProcedimento,
-  updateElement as updateProcedimento,
-  deleteElement as deleteProcedimento
-} from '@/services/procedimentoService'
+  Fila,
+  getAll as getAllFilas,
+  getElementById as getFilaById,
+  createElement as createFila,
+  updateElement as updateFila,
+  deleteElement as deleteFila
+} from '@/services/filasService'
 import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
+import { Checkbox } from '@/components/ui/checkbox'
 
-export default function PageEspecialidades() {
-  const titulo = 'Procedimentos'
-  const tituloUpdate = 'Editar procedimento'
-  const tituloInsert = 'Novo procedimento'
+export default function PageFilas() {
+  const titulo = 'Filas'
+  const tituloUpdate = 'Editar fila'
+  const tituloInsert = 'Nova fila'
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
-  const [results, setResults] = useState<Procedimento[]>([])
+  const [results, setResults] = useState<Fila[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
-  const [resultById, setResultById] = useState<Procedimento>()
+  const [resultById, setResultById] = useState<Fila>()
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -66,11 +67,12 @@ export default function PageEspecialidades() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const loading = isPending
 
-  const form = useForm<Procedimento>({
+  const form = useForm<Fila>({
     defaultValues: { 
       id: 0, 
       nome: '',
-      especialidade_id: 0
+      especialidade_id: 0,
+      controle: false
     }
   })
 
@@ -113,7 +115,7 @@ export default function PageEspecialidades() {
       const dadosEspecialidades = await getAllEspecialidades()
       setEspecialidades(dadosEspecialidades)
       
-      const dados = await getAllProcedimentos()
+      const dados = await getAllFilas()
       const qNorm = stripDiacritics(q.toLowerCase().trim())
       const filtrados = qNorm
         ? dados.filter(
@@ -146,7 +148,7 @@ export default function PageEspecialidades() {
     if (!deleteId) return
     
     try {
-      await deleteProcedimento(deleteId)        
+      await deleteFila(deleteId)        
     } catch (err) {
       toast.error(`Erro ao excluir registro`)
     } finally {
@@ -160,12 +162,13 @@ export default function PageEspecialidades() {
     setError(null)
     setUpdateMode(true)
     try {
-      const response = await getProcedimentoById(id)
+      const response = await getFilaById(id)
       setResultById(response)
       form.reset({ 
         id: response.id, 
         nome: response.nome,
-        especialidade_id: response.especialidade_id
+        especialidade_id: response.especialidade_id,
+        controle: response.controle
       })
       setIsModalOpen(true)
     } catch (err) {
@@ -174,18 +177,18 @@ export default function PageEspecialidades() {
   }
 
   function handleInsert() {
-    form.reset({ id: 0, nome: '', especialidade_id: 0 })
+    form.reset({ id: 0, nome: '', especialidade_id: 0, controle: false })
     setUpdateMode(false)
     setIsModalOpen(true)
   }
 
-  async function onSubmit(data: Procedimento) {
+  async function onSubmit(data: Fila) {
     setError(null)
     try {
       if (data.id && data.id !== 0) {
-        await updateProcedimento(data)        
+        await updateFila(data)        
       } else {
-        await createProcedimento(data)
+        await createFila(data)
       }
     } catch (err) {
       toast.error(`Erro ao enviar registro`)
@@ -197,11 +200,12 @@ export default function PageEspecialidades() {
     }
   }
 
-  const colunas = useMemo<ColumnDef<Procedimento>[]>(
+  const colunas = useMemo<ColumnDef<Fila>[]>(
     () => [
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'nome', header: 'Nome' },
       { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
+      { accessorKey: 'controle', header: 'Fila de controle', accessorFn: (row) => row.controle == true ? 'Sim' : 'Não' },
       {
         id: 'actions',
         header: 'Ações',
@@ -333,6 +337,23 @@ export default function PageEspecialidades() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="controle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fila de controle</FormLabel>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Button type="submit" disabled={loading}>
                 {loading ? 'Salvando…' : 'Salvar'}
               </Button>
@@ -366,7 +387,7 @@ export default function PageEspecialidades() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-xl bg-background p-4 shadow-2xl">
             <h3 className="mb-2 text-base font-semibold">
-              Excluir procedimento
+              Excluir fila
             </h3>
             <p className="mb-4 text-sm text-muted-foreground">
               Tem certeza que deseja excluir o registro #{deleteId}?
