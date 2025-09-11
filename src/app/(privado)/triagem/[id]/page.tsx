@@ -10,17 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { getPatientById, Patient, TriagemFormData, Especialidade, submitTriagem } from '@/services/patientService'
+import { getPatientById, TriagemFormData, Especialidade, submitTriagem } from '@/services/patientService'
 import { differenceInMonths, parseISO, isValid } from 'date-fns'
 import { X } from 'lucide-react'
-
-
-/** Preset inicial (futuro: virá da página de configuração / API) */
-const ESPECIALIDADES_PRESET: Especialidade[] = [
-  { id: 'odonto', nome: 'Odonto' },
-  { id: 'ortopedia', nome: 'Ortopedia' },
-  { id: 'clinico-geral', nome: 'Clinico Geral' }
-]
+import { getAll } from '@/services/especialidadeService'
 
 /** ===== Helpers ===== **/
 function safeDate(iso?: string) {
@@ -57,8 +50,9 @@ function DisplayField({ label, value }: { label: string; value?: string }) {
 
 /** ===== Página ===== **/
 export default function TriagemPage() {
-  const usuario = 'Usuário em Sessão'
+  const [userName, setUserName] = useState("");
   const [dataHora, setDataHora] = useState<string | null>(null)
+  const [allEspecialidades, setallEspecialidades] = useState<Especialidade[]>([])
   const searchParams = useSearchParams()
   const params = useParams() as { id?: string }
 
@@ -91,7 +85,7 @@ export default function TriagemPage() {
       medicacao24h: '',
       alergia: 'não',
       quaisAlergias: '',
-      coletadoPor: usuario,
+      coletadoPor: userName,
       dataHora: new Date().toLocaleString('pt-BR')
     }
   })
@@ -102,9 +96,20 @@ export default function TriagemPage() {
   const especialidades = watch('especialidades') || []
 
   // select controlado por id do preset
-  const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] = useState<string>('')
+  const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] = useState<number>()
+
+  async function handleLoadEspecialidades() {    
+    const resEspecialidades = await getAll();
+    setallEspecialidades(resEspecialidades);
+  }
 
   useEffect(() => {
+    handleLoadEspecialidades();
+    const storedUser = localStorage.getItem("userData");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserName(user.usuario.toUpperCase());
+    }
     setDataHora(new Date().toLocaleString('pt-BR'));
     async function load() {
       if (!Number.isFinite(pacienteId)) {
@@ -121,7 +126,7 @@ export default function TriagemPage() {
           nomePaciente: p?.nome ?? '',
           idade: idadeFmt,
           prontuario: p?.id ?? 0,
-          coletadoPor: usuario,
+          coletadoPor: userName,
           dataHora: new Date().toLocaleString('pt-BR')
         }))
       } catch (e) {
@@ -135,18 +140,18 @@ export default function TriagemPage() {
   }, [pacienteId])
 
   function addEspecialidade() {
-    const id = (especialidadeSelecionadaId || '').trim()
+    const id = especialidadeSelecionadaId
     if (!id) return
-    const chosen = ESPECIALIDADES_PRESET.find(e => e.id === id)
+    const chosen = allEspecialidades.find(e => e.id === id)
     if (!chosen) return
     if (especialidades.some(e => e.id === id)) return // evita duplicado
     setValue('especialidades', [...especialidades, chosen], {
       shouldDirty: true
     })
-    setEspecialidadeSelecionadaId('')
+    setEspecialidadeSelecionadaId(0)
   }
 
-  function removeEspecialidade(id: string) {
+  function removeEspecialidade(id: number) {
     setValue(
       'especialidades',
       especialidades.filter(e => e.id !== id),
@@ -173,7 +178,7 @@ export default function TriagemPage() {
         <CardHeader>
           <CardTitle>Ficha de Triagem Clínica</CardTitle>
           <div className="text-xs text-slate-500 mt-2">
-            Preenchido por: <b>{usuario}</b> <span className="mx-1">|</span>
+            Preenchido por: <b>{userName}</b> <span className="mx-1">|</span>
             Data/hora: <b>{dataHora}</b>
             {Number.isFinite(pacienteId) && (
               <>
@@ -225,11 +230,11 @@ export default function TriagemPage() {
                     className="border rounded px-3 py-2 min-w-[200px]"
                     value={especialidadeSelecionadaId}
                     onChange={e =>
-                      setEspecialidadeSelecionadaId(e.target.value)
+                      setEspecialidadeSelecionadaId(Number(e.target.value))
                     }
                   >
                     <option value="">Selecionar...</option>
-                    {ESPECIALIDADES_PRESET.map(opt => (
+                    {allEspecialidades.map(opt => (
                       <option key={opt.id} value={opt.id}>
                         {opt.nome}
                       </option>
@@ -254,7 +259,7 @@ export default function TriagemPage() {
                             type="button"
                             className="ml-1 rounded hover:bg-muted p-0.5"
                             aria-label={`Remover ${esp.nome}`}
-                            // onClick={() => removeEspecialidade(esp.id)}
+                            onClick={() => removeEspecialidade(esp.id)}
                           >
                             <X className="h-3 w-3" />
                           </button>

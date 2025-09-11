@@ -80,7 +80,7 @@ export default function SelecionarPacienteTriagemPage() {
                     </div>
                   )}
                 </div>
-                {index === 0 && (
+                {/* {index === 0 && ( */}
                   <div className="shrink-0">
                     <Button
                       size="sm"
@@ -91,7 +91,7 @@ export default function SelecionarPacienteTriagemPage() {
                       Realizar triagem
                     </Button>
                   </div>
-                )}
+                {/* )} */}
               </div>
             </CardContent>
           </Card>
