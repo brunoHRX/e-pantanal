@@ -254,7 +254,7 @@ export default function TriagemPage() {
                             type="button"
                             className="ml-1 rounded hover:bg-muted p-0.5"
                             aria-label={`Remover ${esp.nome}`}
-                            onClick={() => removeEspecialidade(esp.id)}
+                            // onClick={() => removeEspecialidade(esp.id)}
                           >
                             <X className="h-3 w-3" />
                           </button>

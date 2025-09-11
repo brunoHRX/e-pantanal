@@ -1,29 +1,17 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { SearchIcon, X } from 'lucide-react'
-import { getAllPatients, Patient } from '@/services/patientService'
-import { SelectedPatientCard } from './selected-patient-card'
-import { SuggestionList } from './suggestion-list'
+import { getAllPatients, Patient } from '@/services/triagemService'
 import { useRouter } from 'next/navigation'
-
-function stripDiacritics(s: string) {
-  return s.normalize('NFD').replace(/\p{Diacritic}/gu, '')
-}
+import { ageFromISO, maskCPF, safeDateLabel } from '@/utils/functions'
+import { Badge } from '@/components/ui/badge'
 
 export default function SelecionarPacienteTriagemPage() {
-  const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<Patient[]>([])
-  const [all, setAll] = useState<Patient[]>([])
-  const [selected, setSelected] = useState<Patient | null>(null)
   const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState<number>(-1)
+  const [all, setAll] = useState<Patient[]>([])
   const [loading, startTransition] = useTransition()
-  const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -31,82 +19,7 @@ export default function SelecionarPacienteTriagemPage() {
       const dados = await getAllPatients()
       setAll(dados)
     })
-  }, [])
-
-  const runFilter = (q: string) => {
-    const qNorm = stripDiacritics(q.trim().toLowerCase())
-    if (!qNorm) {
-      setSuggestions([])
-      setOpen(false)
-      setActiveIndex(-1)
-      return
-    }
-    const isCpfLike = /\d{3,}/.test(qNorm.replace(/\D/g, ''))
-    const filtered = all.filter(p => {
-      const nome = stripDiacritics((p.nome ?? '').toLowerCase())
-      const cpf = p.cpf ?? ''
-      const id = String(p.id ?? '')
-      if (nome.includes(qNorm)) return true
-      if (
-        isCpfLike &&
-        cpf.replace(/\D/g, '').includes(qNorm.replace(/\D/g, ''))
-      )
-        return true
-      if (id.includes(qNorm)) return true
-      return false
-    })
-    setSuggestions(filtered.slice(0, 20))
-    setOpen(true)
-    setActiveIndex(filtered.length ? 0 : -1)
-  }
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => runFilter(query), 250)
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node))
-        setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  function handleSelect(p: Patient) {
-    setSelected({ ...p, fazendaReferencia: p.fazendaReferencia ?? '' })
-    setOpen(false)
-    setActiveIndex(-1)
-  }
-
-  function clearSelection() {
-    setSelected(null)
-    setQuery('')
-    setSuggestions([])
-    setOpen(false)
-    setActiveIndex(-1)
-  }
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open || suggestions.length === 0) return
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveIndex(i => (i + 1) % suggestions.length)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIndex(i => (i - 1 + suggestions.length) % suggestions.length)
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (activeIndex >= 0) handleSelect(suggestions[activeIndex])
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-    }
-  }
+  }, []);
 
   return (
     <div className="p-6">
@@ -116,84 +29,74 @@ export default function SelecionarPacienteTriagemPage() {
             Selecionar Paciente para Triagem
           </CardTitle>
         </CardHeader>
-
-        <CardContent className="flex flex-col gap-2">
-          {/* TOOLBAR INLINE */}
-          <div className="relative flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                placeholder="Digite nome do cidadão, CPF ou prontuário"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onFocus={() => query && setOpen(true)}
-                onKeyDown={onKeyDown}
-                className="pr-10"
-                aria-expanded={open}
-                aria-controls="suggestion-list"
-                aria-autocomplete="list"
-              />
-              {query && (
-                <button
-                  aria-label="Limpar busca"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
-                  onClick={() => setQuery('')}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-              {/* dropdown */}
-              {open && suggestions.length > 0 && (
-                <SuggestionList
-                  id="suggestion-list"
-                  items={suggestions}
-                  activeIndex={activeIndex}
-                  onHover={setActiveIndex}
-                  onSelect={handleSelect}
-                />
-              )}
-              {open && suggestions.length === 0 && query && (
-                <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow">
-                  Nenhum paciente encontrado.
-                </div>
-              )}
-            </div>
-
-            {/* Botões ao lado do input */}
-            <Button
-              onClick={() => runFilter(query)}
-              disabled={loading}
-              size="sm"
-              className="shrink-0"
-            >
-              <SearchIcon className="mr-1 h-4 w-4" />
-              Buscar
-            </Button>
-            {selected && (
-              <Button
-                variant="outline"
-                onClick={clearSelection}
-                size="sm"
-                className="shrink-0"
-              >
-                Limpar
-              </Button>
-            )}
-          </div>
-        </CardContent>
       </Card>
-
-      {/* CARD COMPACTO */}
-      {selected ? (
-        <SelectedPatientCard
-          paciente={selected}
-          onClear={clearSelection}
-          onTriagem={() => router.push(`/triagem/nova?id=${selected.id}`)} // NÃO ligar agora
-        />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Selecione um paciente acima para iniciar a triagem.
-        </p>
-      )}
+      
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {all.map((paciente, index) => (
+          <Card className="relative" key={paciente.id}>
+            <CardHeader className="py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <CardTitle className="leading-tight text-base">
+                    {paciente?.nome || 'Sem nome'}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    CPF: {maskCPF(paciente?.cpf)} • Prontuário: {paciente?.id ?? '—'}
+                  </p>
+                </div>
+      
+                <div className="flex items-center gap-1">
+                  {paciente.sexo !== '—' && (
+                    <Badge variant="secondary" className="text-[10px] py-0.5">
+                      {paciente.sexo}
+                    </Badge>
+                  )}
+                  {paciente.tipoSanguineo !== '—' && (
+                    <Badge variant="outline" className="text-[10px] py-0.5">
+                      {paciente.tipoSanguineo}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+      
+            <CardContent className="pt-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="text-sm leading-relaxed">
+                  <div>
+                    <span className="font-medium">Nascimento:</span> {safeDateLabel(paciente.dataNascimento)}
+                    {paciente.dataNascimento !== null && (
+                      <span className="text-muted-foreground"> • {ageFromISO(paciente.dataNascimento)} anos</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium">Nome da Mãe:</span>{' '}
+                    {paciente?.filiacao1 || '—'}
+                  </div>
+                  {paciente?.fazendaReferencia && (
+                    <div className="truncate">
+                      <span className="font-medium">Local:</span>{' '}
+                      {paciente.fazendaReferencia}
+                    </div>
+                  )}
+                </div>
+                {index === 0 && (
+                  <div className="shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/triagem/novo?id=${paciente.id}`)}
+                      title="Ir para triagem"
+                      className="whitespace-nowrap"
+                    >
+                      Realizar triagem
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
