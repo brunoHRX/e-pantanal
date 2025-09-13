@@ -40,11 +40,9 @@ export type Patient = {
 
 export type TriagemFormData = {
     nomePaciente: string
-    idade: string // "X anos e Y meses"
+    idade: string
     prontuario: number
-
-    especialidades: Especialidade[] // << mudou para objetos
-
+    especialidades: Especialidade[]
     situacao: string
     sinaisVitais: {
         peso: string
@@ -57,11 +55,9 @@ export type TriagemFormData = {
     comorbidadeOp: string
     comorbidadeDesc?: string
     obsComorbidade?: string
-
     medicacao24h: string
     alergia: 'não' | 'sim'
     quaisAlergias?: string
-
     coletadoPor: string
     dataHora: string
 }

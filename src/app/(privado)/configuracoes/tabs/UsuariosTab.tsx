@@ -71,6 +71,9 @@ export default function PageUsuarios() {
       id: 0, 
       especialidade_id: 0,
       usuario: '',
+      registro: '',
+      uf: '',
+      sigla: '',
       email: ''
     }
   })
@@ -169,6 +172,9 @@ export default function PageUsuarios() {
         id: response.id, 
         usuario: response.usuario,
         email: response.email,
+        registro: response.registro,
+        sigla: response.sigla,
+        uf: response.uf,
         especialidade_id: response.especialidade_id
       })
       setIsModalOpen(true)
@@ -178,7 +184,7 @@ export default function PageUsuarios() {
   }
 
   function handleInsert() {
-    form.reset({ id: 0, usuario: '', email: '', especialidade_id: 0 })
+    form.reset({ id: 0, usuario: '', email: '', registro: '', uf: '', sigla: '', especialidade_id: 0 })
     setUpdateMode(false)
     setIsModalOpen(true)
   }
@@ -207,6 +213,11 @@ export default function PageUsuarios() {
       { accessorKey: 'usuario', header: 'Usuário' },
       { accessorKey: 'email', header: 'Email' },
       { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
+      { 
+        id: 'registroProfissional', 
+        header: 'Registro prof.', 
+        accessorFn: (row) => row.registro ? row.sigla?.toUpperCase() + "/" + row.uf?.toUpperCase() + " - " + row.registro : ""
+      },
       {
         id: 'actions',
         header: 'Ações',
@@ -313,6 +324,48 @@ export default function PageUsuarios() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sigla"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sigla</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="uf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>UF</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="registro"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Registro</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>

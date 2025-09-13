@@ -1,5 +1,5 @@
 export type Especialidade = { 
     id: number,
     nome: string,
-    ativo: boolean,
+    ativo?: boolean,
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,13 +50,13 @@ function DisplayField({ label, value }: { label: string; value?: string }) {
 
 /** ===== Página ===== **/
 export default function TriagemPage() {
+  const router = useRouter()
   const [userName, setUserName] = useState("");
   const [dataHora, setDataHora] = useState<string | null>(null)
   const [allEspecialidades, setallEspecialidades] = useState<Especialidade[]>([])
   const searchParams = useSearchParams()
   const params = useParams() as { id?: string }
 
-  // aceita ?id= ou /triagem/[id]
   const pacienteId = useMemo(() => {
     const q = searchParams.get('id')
     return Number(q ?? params?.id ?? NaN)
@@ -164,11 +164,12 @@ export default function TriagemPage() {
     setError(null)
     try {        
       await submitTriagem(data)
+      toast.success('Triagem salva!')      
     } catch (e) {
-      setError((e as Error).message || 'Falha ao salvar triagem.')
+      toast.success((e as Error).message || 'Falha ao salvar triagem.')
     } finally {
       setLoading(false)
-      toast.success('Triagem salva!')
+      router.push(`/triagem`)
     }
   }
 
