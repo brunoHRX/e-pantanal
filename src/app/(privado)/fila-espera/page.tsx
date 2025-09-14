@@ -303,23 +303,14 @@ export default function FilaEsperaPage() {
                       <TooltipTrigger asChild>
                         <Button
                           size="icon"
-                          variant="ghost"
-                          aria-label="Editar triagem"
-                          onClick={() => onEditar(p.triagem?.id ?? 0)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Editar Triagem</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
                           variant="destructive"
                           aria-label="Remover da fila"
-                          onClick={() => onExcluir(p.id)}
+                          onClick={() => {
+                            const confirmed = window.confirm('Tem certeza que deseja remover este atendimento da fila?');
+                            if (confirmed) {
+                              onExcluir(p.id);
+                            }
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
