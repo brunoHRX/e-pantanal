@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-
 import {
   Search,
   Eye,
@@ -31,131 +30,101 @@ import {
   X,
   Filter
 } from 'lucide-react'
-
-type EstadoAtendimento = 'Aguardando' | 'Em andamento'
-type Sexo = 'Masculino' | 'Feminino'
-interface Paciente {
-  id: string
-  createdAt: string // ISO date da abertura/ficha
-  hora: string
-  tempoDecorrido: string
-  nome: string
-  idade: string
-  tags: string[] // Especialidades aguardando
-  responsavel: string // Responsável pela triagem
-  sexo: Sexo
-  estado: EstadoAtendimento // Estado do atendimento
-}
-
-const pacientesMock: Paciente[] = [
-  {
-    id: '1',
-    createdAt: '2025-08-31T11:18:00-04:00',
-    hora: '11:18',
-    tempoDecorrido: '25 min',
-    nome: 'MILENA RODRIGUES BOIADEIRO',
-    idade: '25 anos e 8 meses',
-    tags: ['Clínico Geral', 'Exames'],
-    responsavel: 'Barbara Marcela Cabral de Lima',
-    sexo: 'Feminino',
-    estado: 'Aguardando'
-  },
-  {
-    id: '2',
-    createdAt: '2025-08-31T17:44:00-04:00',
-    hora: '17:44',
-    tempoDecorrido: '2h 10min',
-    nome: 'RAQUEL VIRGILIO',
-    idade: '75 anos e 5 meses',
-    tags: ['Emergência'],
-    responsavel: 'Caroline Felipe Bezerra',
-    sexo: 'Feminino',
-    estado: 'Em andamento'
-  },
-  {
-    id: '3',
-    createdAt: '2025-08-31T09:05:00-04:00',
-    hora: '09:05',
-    tempoDecorrido: '4h 33min',
-    nome: 'JOÃO PEDRO ALMEIDA',
-    idade: '41 anos e 2 meses',
-    tags: ['Ortopedia'],
-    responsavel: 'Rafael Nogueira',
-    sexo: 'Masculino',
-    estado: 'Aguardando'
-  }
-]
+import { getAll, AtendimentoFluxo, Especialidade } from '@/services/fluxoService'
+import { getAll as getEspecialidades } from '@/services/especialidadeService'
+import { ageFromISO, safeDateTimeLabel, stripDiacritics, waitingTime } from '@/utils/functions'
+import { toast } from 'sonner'
 
 export default function FilaEsperaPage() {
   // Busca
   const [query, setQuery] = useState('')
+  const [results, setResults] = useState<AtendimentoFluxo[]>([])  
+  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
 
+  useEffect(() => {    
+    searchEspecialidades()
+  }, [])
+
+  async function searchEspecialidades() {
+    try {
+      const dados = await getEspecialidades();
+      setEspecialidades(dados);
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
   // Filtros (checkbox)
-  const [filtroEspecialidade, setFiltroEspecialidade] = useState<string[]>([])
-  const [filtroSexo, setFiltroSexo] = useState<Sexo[]>([])
-  const [filtroEstado, setFiltroEstado] = useState<EstadoAtendimento[]>([])
-
-  // Handlers de ações (plugue sua lógica/rotas)
-  const onVer = (id: string) => {}
-  const onEncaminhar = (id: string) => {}
-  const onEditar = (id: string) => {}
-  const onExcluir = (id: string) => {}
+  const [filtroEspecialidades, setFiltroEspecialidades] = useState<number[]>([])
+  const [filtroSexo, setFiltroSexo] = useState<string[]>([])
+  const [filtroEstado, setFiltroEstado] = useState<string[]>([])
 
   const clearQuery = () => setQuery('')
-  const handleSearchClick = () => {
-    // opcional: disparar busca no back-end
+
+  const sexosCatalog = ['Masculino', 'Feminino']
+  const estadosCatalog = ['Aguardando', 'Em atendimento']
+
+  useEffect(() => {    
+    runSearch()
+  }, [query, filtroEspecialidades, filtroSexo, filtroEstado])
+
+  async function runSearch() {
+    console.log('run');
+  
+    try {
+      const q = query?.trim().toLowerCase() || '';
+      const qNorm = stripDiacritics(q);
+  
+      // Pega todos os atendimentos e ordena por entrada
+      const dados = (await getAll()).sort(
+        (a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime()
+      );
+  
+      const filtrados = dados.filter(atendimento => {
+        // === Filtro por nome ou ID do paciente ===
+        const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase());
+        const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm);
+  
+        // === Filtro por especialidade ===
+        const matchEspecialidade =
+          filtroEspecialidades.length === 0 ||
+          (Array.isArray(atendimento.filas) &&
+            atendimento.filas.some(f => f?.fila?.especialidade_id != null && filtroEspecialidades.includes(f.fila.especialidade_id)));
+  
+        // === Filtro por sexo ===
+        const pacienteSexo = (atendimento.paciente?.sexo ?? '').toLowerCase();
+        const matchSexo =
+          filtroSexo.length === 0 ||
+          filtroSexo.map(s => s.toLowerCase()).includes(pacienteSexo);
+  
+        // === Filtro por estado ===
+        const estadoAtual = atendimento.consultorio_id && atendimento.consultorio_id > 0 ? 'em atendimento' : 'aguardando';
+        const matchEstado =
+          filtroEstado.length === 0 ||
+          filtroEstado.map(e => e.toLowerCase()).includes(estadoAtual);
+  
+        // === DEBUG: verificação de cada condição ===
+        // console.log('Paciente:', atendimento.paciente?.nome, 'Query:', matchQuery, 'Especialidade:', matchEspecialidade, 'Sexo:', matchSexo, 'Estado:', matchEstado);
+  
+        // Retorna apenas se todas as condições forem verdadeiras
+        return matchQuery && matchEspecialidade && matchSexo && matchEstado;
+      });
+  
+      // Atualiza resultados
+      setResults(filtrados.map(p => ({ ...p })));
+  
+      console.log('Total filtrados:', filtrados.length);
+  
+    } catch (err) {
+      toast.error((err as Error).message);
+      setResults([]);
+    }
   }
 
-  // Aplica ordenação (por data de abertura) e filtros
-  const pacientes = useMemo(() => {
-    const byCreatedAtAsc = [...pacientesMock].sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-
-    return byCreatedAtAsc.filter(p => {
-      // Busca (nome/ID/CPF/etc. - aqui só nome/ID para exemplo)
-      const q = query.trim().toLowerCase()
-      const matchQuery =
-        !q || p.nome.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
-
-      if (!matchQuery) return false
-
-      // Filtro Especialidade (tags) – se marcado, precisa ter interseção
-      const matchEsp =
-        filtroEspecialidade.length === 0 ||
-        p.tags.some(t => filtroEspecialidade.includes(t))
-
-      // Filtro Sexo
-      const matchSexo = filtroSexo.length === 0 || filtroSexo.includes(p.sexo)
-
-      // Filtro Estado
-      const matchEstado =
-        filtroEstado.length === 0 || filtroEstado.includes(p.estado)
-
-      return matchEsp && matchSexo && matchEstado
-    })
-  }, [query, filtroEspecialidade, filtroSexo, filtroEstado])
-
-  // Helpers para checkbox
-  const toggleArrayFilter = <T extends string>(
-    value: T,
-    arr: T[],
-    setArr: (next: T[]) => void
-  ) => {
-    const exists = arr.includes(value)
-    setArr(exists ? arr.filter(x => x !== value) : [...arr, value])
-  }
-
-  // Catálogos simples (pode vir do back)
-  const especialidadesCatalog = [
-    'Clínico Geral',
-    'Ortopedia',
-    'Emergência',
-    'Exames'
-  ]
-  const sexosCatalog: Sexo[] = ['Masculino', 'Feminino']
-  const estadosCatalog: EstadoAtendimento[] = ['Aguardando', 'Em andamento']
+  // Handlers de ações (plugue sua lógica/rotas)
+  const onVer = (id: number) => {}
+  const onEncaminhar = (id: number) => {}
+  const onEditar = (id: number) => {}
+  const onExcluir = (id: number) => {}
 
   return (
     <div className="p-6">
@@ -174,19 +143,19 @@ export default function FilaEsperaPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-64" align="end">
               <DropdownMenuLabel>Especialidades</DropdownMenuLabel>
-              {especialidadesCatalog.map(esp => (
+              {especialidades.map(esp => (
                 <DropdownMenuCheckboxItem
-                  key={esp}
-                  checked={filtroEspecialidade.includes(esp)}
+                  key={esp.id}
+                  checked={filtroEspecialidades.includes(esp.id)}
                   onCheckedChange={() =>
-                    toggleArrayFilter(
-                      esp,
-                      filtroEspecialidade,
-                      setFiltroEspecialidade
+                    setFiltroEspecialidades(prev =>
+                      prev.includes(esp.id)
+                        ? prev.filter(id => id !== esp.id)
+                        : [...prev, esp.id]
                     )
                   }
                 >
-                  {esp}
+                  {esp.nome.toUpperCase()}
                 </DropdownMenuCheckboxItem>
               ))}
 
@@ -197,7 +166,11 @@ export default function FilaEsperaPage() {
                   key={sx}
                   checked={filtroSexo.includes(sx)}
                   onCheckedChange={() =>
-                    toggleArrayFilter(sx, filtroSexo, setFiltroSexo)
+                    setFiltroSexo(prev =>
+                      prev.includes(sx)
+                        ? prev.filter(id => id !== sx)
+                        : [...prev, sx]
+                    )
                   }
                 >
                   {sx}
@@ -211,7 +184,11 @@ export default function FilaEsperaPage() {
                   key={st}
                   checked={filtroEstado.includes(st)}
                   onCheckedChange={() =>
-                    toggleArrayFilter(st, filtroEstado, setFiltroEstado)
+                    setFiltroEstado(prev =>
+                      prev.includes(st)
+                        ? prev.filter(id => id !== st)
+                        : [...prev, st]
+                    )
                   }
                 >
                   {st}
@@ -221,7 +198,7 @@ export default function FilaEsperaPage() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  setFiltroEspecialidade([])
+                  setFiltroEspecialidades([])
                   setFiltroSexo([])
                   setFiltroEstado([])
                 }}
@@ -241,9 +218,6 @@ export default function FilaEsperaPage() {
               onChange={e => setQuery(e.target.value)}
               className="pr-10"
               aria-label="Campo de busca de pacientes"
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleSearchClick()
-              }}
             />
             {query && (
               <button
@@ -256,7 +230,7 @@ export default function FilaEsperaPage() {
             )}
           </div>
 
-          <Button onClick={handleSearchClick} className="flex items-center">
+          <Button onClick={runSearch} className="flex items-center">
             <Search className="mr-1 h-4 w-4" />
             Buscar
           </Button>
@@ -266,28 +240,28 @@ export default function FilaEsperaPage() {
       {/* LISTA */}
       <TooltipProvider>
         <div className="space-y-2">
-          {pacientes.map(p => (
+          {results.map(p => (
             <Card key={p.id}>
               <CardContent className="p-4 space-y-2">
                 {/* Linha 1: Hora - Nome - Especialidades - Ações */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span className="text-sm text-muted-foreground shrink-0">
-                      {p.hora}
+                      {safeDateTimeLabel(p.entrada)}
                     </span>
 
-                    <span className="font-semibold truncate" title={p.nome}>
-                      {p.nome}
+                    <span className="font-semibold truncate" title={p.paciente.nome}>
+                      {p.paciente.nome}
                     </span>
 
                     <div className="flex flex-wrap gap-2">
-                      {p.tags.map((tag, i) => (
+                      {p.filas?.map((tags, i) => (
                         <Badge
                           key={i}
-                          variant="secondary"
+                          variant={tags.atendido == 0 ? "default" : "secondary"}
                           className="whitespace-nowrap"
                         >
-                          {tag}
+                          {tags.fila.especialidade.nome}
                         </Badge>
                       ))}
                     </div>
@@ -301,7 +275,7 @@ export default function FilaEsperaPage() {
                           size="icon"
                           variant="ghost"
                           aria-label="Visualizar triagem"
-                          onClick={() => onVer(p.id)}
+                          onClick={() => onVer(p.triagem?.id ?? 0)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -331,7 +305,7 @@ export default function FilaEsperaPage() {
                           size="icon"
                           variant="ghost"
                           aria-label="Editar triagem"
-                          onClick={() => onEditar(p.id)}
+                          onClick={() => onEditar(p.triagem?.id ?? 0)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -344,13 +318,13 @@ export default function FilaEsperaPage() {
                         <Button
                           size="icon"
                           variant="destructive"
-                          aria-label="Excluir da fila"
+                          aria-label="Remover da fila"
                           onClick={() => onExcluir(p.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Excluir da Fila</TooltipContent>
+                      <TooltipContent>Remover da Fila</TooltipContent>
                     </Tooltip>
                   </div>
 
@@ -393,12 +367,12 @@ export default function FilaEsperaPage() {
 
                 {/* Linha 2: Tempo decorrido - Idade - Responsável (desktop) */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground">
-                  <span>⏳ {p.tempoDecorrido}</span>
-                  <span>🎂 {p.idade}</span>
+                  <span>⏳ {waitingTime(p.entrada)}</span>
+                  <span>🎂 {ageFromISO(p.paciente.dataNascimento)}</span>
                   <span className="hidden md:inline">
-                    👨‍⚕️ Responsável:{' '}
+                    👨‍⚕️ Responsável triagem:{' '}
                     <span className="font-medium text-foreground">
-                      {p.responsavel}
+                      {p.triagem?.usuario?.usuario}
                     </span>
                   </span>
                 </div>

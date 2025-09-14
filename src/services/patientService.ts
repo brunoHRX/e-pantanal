@@ -1,5 +1,6 @@
 import { Especialidade } from "@/types/Especialidade";
-import { Patient, TriagemFormData } from "@/types/Patient";
+import { Patient } from "@/types/Patient";
+import { TriagemFormData } from "@/types/Triagem";
 import { API_BASE, headers } from "@/utils/constants";
 
 export async function getAllPatients(): Promise<Patient[]> {

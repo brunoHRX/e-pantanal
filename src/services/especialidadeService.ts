@@ -2,7 +2,7 @@ import { API_BASE, headers } from "@/utils/constants";
 import { Especialidade } from "@/types/Especialidade";
 const caminho = "Especialidades";
 const elemento_singular = "especialidade";
-const elemento_plural = "especialidade";
+const elemento_plural = "especialidades";
 
 export async function getAll(): Promise<Especialidade[]> {
     const res = await fetch(`${API_BASE}/api/${caminho}`, {
