@@ -46,7 +46,7 @@ export default function LoginPage() {
       }
       const { token, usuario } = await login(payload)
       localStorage.setItem('authToken', token)
-      localStorage.setItem("userData", JSON.stringify(usuario))
+      localStorage.setItem('userData', JSON.stringify(usuario))
       router.push('/home')
     } catch (error) {
       const message =
@@ -137,18 +137,35 @@ export default function LoginPage() {
         {/* Coluna direita (arte/gradiente cortada) */}
         <aside className="relative hidden md:block">
           {/* Fundo gradiente */}
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-200 via-amber-300 to-pakistan_green-200" />
+          <div className="absolute inset-0 bg-gradient-to-br  from-amber-200 via-lime-300 to-pakistan_green-200" />
 
-          {/* Container arredondado + overflow-hidden */}
-          <div className="relative z-10 flex h-full items-center justify-center p-6 rounded-3xl overflow-hidden">
-            <Image
-              src="/images/login-illustration.png"
-              alt="Ilustração de acesso seguro"
-              width={840}
-              height={840}
-              className="w-full h-full object-cover"
-              priority
-            />
+          {/* Área arredondada + recorte das bordas */}
+          <div className="relative z-10 h-full p-6 rounded-3xl overflow-hidden">
+            {/* Stack vertical centralizado */}
+            <div className="flex h-full w-full flex-col items-center justify-center gap-8">
+              {/* Logo 1 */}
+              <div className="relative w-full max-w-[460px] aspect-[16/9]">
+                <Image
+                  src="/images/alma.png"
+                  alt="Logo patrocinadora ALMA"
+                  fill
+                  className="object-contain"
+                  sizes="(min-width: 1024px) 460px, (min-width: 768px) 50vw, 100vw"
+                  priority
+                />
+              </div>
+
+              {/* Logo 2 */}
+              <div className="relative w-full max-w-[460px] aspect-[16/9]">
+                <Image
+                  src="/images/med-pantanal.png"
+                  alt="Logo patrocinadora Med Pantanal"
+                  fill
+                  className="object-contain"
+                  sizes="(min-width: 1024px) 460px, (min-width: 768px) 50vw, 100vw"
+                />
+              </div>
+            </div>
           </div>
         </aside>
       </div>
