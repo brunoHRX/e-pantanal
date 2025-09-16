@@ -18,6 +18,12 @@ export function QueueLegend() {
         <span>Aguardando atendimento</span>
       </div>
       <div className="flex items-center gap-1">
+        <Badge className="border border-green-800 text-green-800 bg-green-100 h-4 px-2">
+          Atendendo
+        </Badge>
+        <span>Em atendimento</span>
+      </div>
+      <div className="flex items-center gap-1">
         <Badge className="bg-zinc-100 text-zinc-500 border-zinc-200 opacity-70 h-4 px-2">
           Expirado
         </Badge>

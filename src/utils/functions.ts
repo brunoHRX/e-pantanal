@@ -1,5 +1,8 @@
+import { AtendimentoFilas, AtendimentoFluxo } from '@/types/Fluxo'
 import { differenceInYears, format, parseISO, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+
+export type BadgeStatus = 'active' | 'pending' | 'expired' | 'atendendo'
 
 export function stripDiacritics(s: string) {
     return s.normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -60,4 +63,31 @@ export function waitingTime(iso?: string) {
         return `${hours}h ${minutes}min`;
     }
     return `${minutes}min`;
+}
+
+export function badgeClass(status: BadgeStatus): string {
+    switch (status) {
+        case 'active':
+            return 'bg-black text-white border-black hover:bg-black'
+        case 'expired':
+            return 'bg-zinc-100 text-zinc-500 border-zinc-200 opacity-70'
+        case 'atendendo':
+            return 'border border-green-800 text-green-800 bg-green-100 h-4 px-2'
+        case 'pending':
+        default:
+            return 'border border-zinc-500 text-zinc-700 bg-transparent'
+    }
+}
+
+export function computeFilaStatus(
+    at: AtendimentoFluxo,
+    f: AtendimentoFilas
+  ): BadgeStatus {
+    var response: BadgeStatus = 'pending'
+    if (at.fila_id == f?.fila_id) {
+        response = 'active' 
+        if (at.consultorio?.especialidade_id == f.fila.especialidade_id) response = 'atendendo'
+    }
+    if (f?.atendido == 1) response = 'expired'
+    return response
 }

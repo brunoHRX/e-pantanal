@@ -24,7 +24,6 @@ import {
   Search,
   Eye,
   Send,
-  Edit,
   Trash2,
   MoreVertical,
   X,
@@ -33,11 +32,17 @@ import {
 import {
   getAll,
   AtendimentoFluxo,
-  Especialidade
+  Especialidade,
+  FilasFluxo,
+  getFilas,
+  encaminharPaciente,
+  removerPaciente
 } from '@/services/fluxoService'
 import { getAll as getEspecialidades } from '@/services/especialidadeService'
 import {
   ageFromISO,
+  badgeClass,
+  computeFilaStatus,
   safeDateTimeLabel,
   stripDiacritics,
   waitingTime
@@ -45,115 +50,19 @@ import {
 import { toast } from 'sonner'
 
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
-import { QueueSummary } from '@/components/QueueSummary'
 import { QueueLegend } from '@/components/QueueLegend'
 
-// Determina a especialidade "ativa" do paciente sem depender de campos inexistentes.
-function currentEspecialidadeId(at: AtendimentoFluxo): number | null {
-  // 1) Se a fila atual do atendimento está setada, priorize-a
-  const espFromAt = at.fila?.especialidade_id
-  if (espFromAt != null) return espFromAt
-
-  const filas = at.filas || []
-
-  // 2) Primeira pendente (atendido == 0)
-  const pendente = filas.find(f => f?.atendido == 0)
-  if (pendente?.fila?.especialidade_id != null) {
-    return pendente.fila.especialidade_id
-  }
-
-  // 3) Se nada acima, tente TRIAGEM pelo nome
-  const tri = filas.find(f =>
-    (f?.fila?.especialidade?.nome || '').toUpperCase().includes('TRIAGEM')
-  )
-  if (tri?.fila?.especialidade_id != null) {
-    return tri.fila.especialidade_id
-  }
-
-  // 4) Nada encontrado
-  return null
-}
-
-type BadgeStatus = 'active' | 'pending' | 'expired'
-
-// Define o status do badge de uma fila específica
-function computeFilaStatus(
-  at: AtendimentoFluxo,
-  f: AtendimentoFilas
-): BadgeStatus {
-  const activeId = currentEspecialidadeId(at)
-  const espId = f?.fila?.especialidade_id
-
-  if (espId != null && espId === activeId) return 'active'
-  if (f?.atendido == 1) return 'expired'
-  return 'pending'
-}
-
-function encaminharParaEspecialidade(
-  atId: number,
-  espId: number,
-  setResults: React.Dispatch<React.SetStateAction<AtendimentoFluxo[]>>
-) {
-  setResults(prev =>
-    prev.map(at => {
-      if (at.id !== atId) return at
-
-      // encontra a fila/especialidade escolhida
-      const nova = at.filas?.find(f => f?.fila?.especialidade_id === espId)
-      if (!nova?.fila) return at
-
-      const ativaAnteriorId = at.fila?.especialidade_id
-
-      return {
-        ...at,
-        // define a "fila" atual (torna essa esp. a ativa para o nosso compute)
-        fila: nova.fila,
-        // opcionalmente marque a anterior como "expirada" (atendido = 1)
-        filas: at.filas?.map(f => {
-          // se for a escolhida, garante que está pendente (0)
-          if (f.id === nova.id) return { ...f, atendido: 0 }
-          // se era a ativa anterior, marca como expirada
-          if (
-            ativaAnteriorId &&
-            f.fila?.especialidade_id === ativaAnteriorId &&
-            ativaAnteriorId !== espId
-          ) {
-            return { ...f, atendido: 1 }
-          }
-          return f
-        })
-      }
-    })
-  )
-}
-
-// Classes visuais para cada status
-function badgeClass(status: BadgeStatus): string {
-  switch (status) {
-    case 'active':
-      // preto sólido (destaque atual)
-      return 'bg-black text-white border-black hover:bg-black'
-    case 'expired':
-      // claro, “expirado”
-      return 'bg-zinc-100 text-zinc-500 border-zinc-200 opacity-70'
-    case 'pending':
-    default:
-      // só borda e texto
-      return 'border border-zinc-500 text-zinc-700 bg-transparent'
-  }
-}
-
 export default function FilaEsperaPage() {
-  // Busca
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AtendimentoFluxo[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
+  const [filas, setFilas] = useState<FilasFluxo>()
   const [triagemOpen, setTriagemOpen] = useState(false)
-  const [triagemSelecionada, setTriagemSelecionada] =
-    useState<AtendimentoFluxo | null>(null)
+  const [triagemSelecionada, setTriagemSelecionada] = useState<AtendimentoFluxo>()
 
   useEffect(() => {
     searchEspecialidades()
+    searchFilas()
   }, [])
 
   async function searchEspecialidades() {
@@ -163,14 +72,21 @@ export default function FilaEsperaPage() {
     } catch (err) {
       toast.error((err as Error).message)
     }
+  }  
+
+  async function searchFilas() {
+    try {
+      const dados = await getFilas()
+      setFilas(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
   }
-  // Filtros (checkbox)
+
   const [filtroEspecialidades, setFiltroEspecialidades] = useState<number[]>([])
   const [filtroSexo, setFiltroSexo] = useState<string[]>([])
   const [filtroEstado, setFiltroEstado] = useState<string[]>([])
-
   const clearQuery = () => setQuery('')
-
   const sexosCatalog = ['Masculino', 'Feminino']
   const estadosCatalog = ['Aguardando', 'Em atendimento']
 
@@ -179,76 +95,57 @@ export default function FilaEsperaPage() {
   }, [query, filtroEspecialidades, filtroSexo, filtroEstado])
 
   async function runSearch() {
-    console.log('run')
-
     try {
       const q = query?.trim().toLowerCase() || ''
       const qNorm = stripDiacritics(q)
-
-      // Pega todos os atendimentos e ordena por entrada
-      const dados = (await getAll()).sort(
-        (a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime()
-      )
-
+      const dados = (await getAll()).sort((a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime())
       const filtrados = dados.filter(atendimento => {
-        // === Filtro por nome ou ID do paciente ===
-        const nomePaciente = stripDiacritics(
-          (atendimento.paciente?.nome ?? '').toLowerCase()
-        )
-        const matchQuery =
-          qNorm === '' ||
-          nomePaciente.includes(qNorm) ||
-          String(atendimento.paciente?.id ?? '').includes(qNorm)
-
-        // === Filtro por especialidade ===
-        const matchEspecialidade =
-          filtroEspecialidades.length === 0 ||
-          (Array.isArray(atendimento.filas) &&
-            atendimento.filas.some(
-              f =>
-                f?.fila?.especialidade_id != null &&
-                filtroEspecialidades.includes(f.fila.especialidade_id)
-            ))
-
-        // === Filtro por sexo ===
+        const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase())
+        const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
+        const matchEspecialidade = filtroEspecialidades.length === 0 || (Array.isArray(atendimento.filas) && atendimento.filas.some(f => f?.fila?.especialidade_id != null && filtroEspecialidades.includes(f.fila.especialidade_id)))
         const pacienteSexo = (atendimento.paciente?.sexo ?? '').toLowerCase()
-        const matchSexo =
-          filtroSexo.length === 0 ||
-          filtroSexo.map(s => s.toLowerCase()).includes(pacienteSexo)
-
-        // === Filtro por estado ===
-        const estadoAtual =
-          atendimento.consultorio_id && atendimento.consultorio_id > 0
-            ? 'em atendimento'
-            : 'aguardando'
-        const matchEstado =
-          filtroEstado.length === 0 ||
-          filtroEstado.map(e => e.toLowerCase()).includes(estadoAtual)
-
-        // === DEBUG: verificação de cada condição ===
+        const matchSexo = filtroSexo.length === 0 || filtroSexo.map(s => s.toLowerCase()).includes(pacienteSexo)
+        const estadoAtual = atendimento.consultorio_id && atendimento.consultorio_id > 0 ? 'em atendimento' : 'aguardando'
+        const matchEstado = filtroEstado.length === 0 || filtroEstado.map(e => e.toLowerCase()).includes(estadoAtual)
         // console.log('Paciente:', atendimento.paciente?.nome, 'Query:', matchQuery, 'Especialidade:', matchEspecialidade, 'Sexo:', matchSexo, 'Estado:', matchEstado);
-
-        // Retorna apenas se todas as condições forem verdadeiras
         return matchQuery && matchEspecialidade && matchSexo && matchEstado
       })
-
-      // Atualiza resultados
       setResults(filtrados.map(p => ({ ...p })))
-
-      console.log('Total filtrados:', filtrados.length)
     } catch (err) {
       toast.error((err as Error).message)
       setResults([])
     }
+    searchFilas()
   }
 
-  // Handlers de ações (plugue sua lógica/rotas)
   const onVer = (at: AtendimentoFluxo) => {
     setTriagemSelecionada(at)
     setTriagemOpen(true)
   }
-  const onEncaminhar = (id: number) => {}
-  const onExcluir = (id: number) => {}
+
+  async function onEncaminhar (atendimento: number, fila: number) {
+    try {
+      await encaminharPaciente(atendimento, fila);
+      toast.success("Paciente encaminhado!")
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+    searchEspecialidades()
+    searchFilas()
+    runSearch()
+  }
+
+  async function onExcluir (atendimento: number) {
+    try {
+      await removerPaciente(atendimento);
+      toast.success("Paciente removido!")
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+    searchEspecialidades()
+    searchFilas()
+    runSearch()
+  }
 
   return (
     <div className="p-6">
@@ -359,8 +256,35 @@ export default function FilaEsperaPage() {
             Buscar
           </Button>
         </CardContent>
+
         <CardContent className="pt-0">
-          <QueueSummary items={results} />
+          <div className="space-y-2">
+            { 
+              filas?.total != null ? (
+                <div className="text-sm">
+                  Total na fila:{' '}
+                  <span className="font-semibold text-foreground">{filas.total}</span>
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Sem especialidades aguardando.
+                </span>
+              )
+            }
+            <div className="flex flex-wrap gap-2">
+              {
+                filas?.filas.map(item => (
+                  item.quantidade > 0 && (<Badge
+                    key={item.id}
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    {item.nome} ({item.quantidade})
+                  </Badge>)
+                ))
+              }
+            </div>
+          </div>
           <QueueLegend />
         </CardContent>
       </Card>
@@ -371,35 +295,17 @@ export default function FilaEsperaPage() {
           {results.map(p => (
             <Card key={p.id}>
               <CardContent className="p-4 space-y-2">
-                {/* Linha 1: Hora - Nome - Especialidades - Ações */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-sm text-muted-foreground shrink-0">
-                      {safeDateTimeLabel(p.entrada)}
-                    </span>
 
-                    <span
-                      className="font-semibold truncate"
-                      title={p.paciente.nome}
-                    >
-                      {p.paciente.nome}
-                    </span>
+                    <span className="text-sm text-muted-foreground shrink-0">{safeDateTimeLabel(p.entrada)}</span>
+                    <span className="font-semibold truncate" title={p.paciente.nome}>{p.paciente.nome}</span>
 
                     <div className="flex flex-wrap gap-2">
                       {p.filas?.map((f, i) => {
                         const status = computeFilaStatus(p, f)
-                        const name =
-                          f?.fila?.especialidade?.nome ?? 'Especialidade'
-                        return (
-                          <Badge
-                            key={i}
-                            className={`whitespace-nowrap ${badgeClass(
-                              status
-                            )}`}
-                          >
-                            {name}
-                          </Badge>
-                        )
+                        const name = f?.fila?.especialidade?.nome ?? 'Especialidade'
+                        return (<Badge key={i} className={`whitespace-nowrap ${badgeClass(status)}`}>{name}</Badge>)
                       })}
                     </div>
                   </div>
@@ -426,7 +332,6 @@ export default function FilaEsperaPage() {
                           size="icon"
                           variant="ghost"
                           aria-label="Encaminhar para atendimento"
-                          onClick={() => onEncaminhar(p.id)}
                         >
                           <DropdownMenu>
                             <Tooltip>
@@ -450,22 +355,12 @@ export default function FilaEsperaPage() {
                               align="end"
                               className="min-w-56"
                             >
-                              {p.filas?.filter(f => f.atendido == 0).length ? (
+                              {p.filas?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id).length ? (
                                 p.filas
-                                  ?.filter(f => f.atendido == 0)
+                                  ?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id)
                                   .map(f => (
-                                    <DropdownMenuItem
-                                      key={f.id}
-                                      onClick={() =>
-                                        encaminharParaEspecialidade(
-                                          p.id,
-                                          f.fila?.especialidade_id as number,
-                                          setResults
-                                        )
-                                      }
-                                    >
-                                      {f.fila?.especialidade?.nome ??
-                                        'Especialidade'}
+                                    <DropdownMenuItem key={f.id} onClick={() => onEncaminhar(p.id,f.fila.id)}>
+                                      {f.fila.especialidade.nome}
                                     </DropdownMenuItem>
                                   ))
                               ) : (
@@ -521,26 +416,14 @@ export default function FilaEsperaPage() {
                           <Eye className="mr-2 h-4 w-4" />
                           Visualizar triagem
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEncaminhar(p.id)}>
+                        <DropdownMenuItem>
                           <Send className="mr-2 h-4 w-4" />
-                          {p.filas?.filter(f => f.atendido == 0).length ? (
+                          {p.filas?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id).length ? (
                             p.filas
-                              ?.filter(f => f.atendido == 0)
+                              ?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id)
                               .map(f => (
-                                <DropdownMenuItem
-                                  key={`enc-${f.id}`}
-                                  onClick={() =>
-                                    encaminharParaEspecialidade(
-                                      p.id,
-                                      f.fila?.especialidade_id as number,
-                                      setResults
-                                    )
-                                  }
-                                >
-                                  <Send className="mr-2 h-4 w-4" />
-                                  Encaminhar:{' '}
-                                  {f.fila?.especialidade?.nome ??
-                                    'Especialidade'}
+                                <DropdownMenuItem key={f.id} onClick={() => onEncaminhar(p.id,f.fila.id)}>
+                                  {f.fila.especialidade.nome}
                                 </DropdownMenuItem>
                               ))
                           ) : (
@@ -578,11 +461,11 @@ export default function FilaEsperaPage() {
           ))}
         </div>
       </TooltipProvider>
-      <TriagemViewDialog
+      {triagemSelecionada && (<TriagemViewDialog
         open={triagemOpen}
         onOpenChange={setTriagemOpen}
         atendimento={triagemSelecionada}
-      />
+      />)}
     </div>
   )
 }

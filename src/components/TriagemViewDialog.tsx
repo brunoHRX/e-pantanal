@@ -10,24 +10,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AtendimentoFluxo } from '@/services/fluxoService'
-import { ageFromISO, safeDateTimeLabel, waitingTime } from '@/utils/functions'
+import { ageFromISO, badgeClass, computeFilaStatus, safeDateLabel, safeDateTimeLabel, waitingTime } from '@/utils/functions'
 import { Block } from '@/components/ui/block'
 
-/**
- * Exibe TUDO que temos da triagem:
- * - Dados do paciente (nome, nascimento, idade, prontuário)
- * - Metadados (entrada, tempo de espera)
- * - Filas (especialidades aguardadas pelo fluxo)
- * - Campos da TriagemFormData:
- *    nomePaciente, idade, prontuario
- *    especialidades[] (objetos)
- *    situacao
- *    sinaisVitais: { peso, temperatura, fr, sato2, pa, fc }
- *    comorbidadeOp, comorbidadeDesc
- *    medicacao24h
- *    alergia, quaisAlergias
- *    coletadoPor, dataHora
- */
 export function TriagemViewDialog({
   open,
   onOpenChange,
@@ -35,23 +20,10 @@ export function TriagemViewDialog({
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  atendimento: AtendimentoFluxo | null
+  atendimento: AtendimentoFluxo
 }) {
-  const tri = atendimento?.triagem
-  const pac = atendimento?.paciente
-
-  // Alguns campos podem existir duplicados (ex.: nome/idade no form e no paciente).
-  // Mostramos ambos quando fizer sentido, priorizando dados "confiáveis" do paciente
-  // e usando os do form como referência visual do que foi escrito na triagem.
-  const nomePacienteForm = tri?.nomePaciente
-  const idadeTextoForm = tri?.idade // anos e meses (formatado)
-  const prontuarioForm = tri?.prontuario
-
-  // Especialidades aguardadas pelo fluxo (filas)
-  const filas = atendimento?.filas ?? []
-  // Especialidades selecionadas no formulário de triagem (objetos)
-  const especialidadesForm = tri?.especialidades ?? []
-
+  const possuiComorbidades = atendimento.triagem?.comorbidades !== "" ? true : false;
+  const possuiAlergias = atendimento.triagem?.alergias !== "" ? true : false;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -69,27 +41,27 @@ export function TriagemViewDialog({
               <div>
                 {/* Nome destacado */}
                 <div className="font-semibold text-lg truncate">
-                  {pac?.nome || nomePacienteForm || 'Paciente'}
+                  {atendimento.paciente.nome}
                 </div>
 
                 {/* Metadados todos na mesma linha */}
                 <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
                   <span>
                     Nasc.:{' '}
-                    {pac?.dataNascimento
-                      ? safeDateTimeLabel(pac.dataNascimento)
+                    {atendimento.paciente.dataNascimento
+                      ? safeDateLabel(atendimento.paciente.dataNascimento)
                       : '—'}
                   </span>
                   <span>
                     Idade:{' '}
-                    {pac?.dataNascimento
-                      ? ageFromISO(pac.dataNascimento)
-                      : idadeTextoForm || '—'}
+                    {atendimento.paciente.dataNascimento
+                      ? ageFromISO(atendimento.paciente.dataNascimento)
+                      : '—'}
                   </span>
                   <span>
                     Prontuário:{' '}
                     <b className="text-foreground">
-                      {pac?.id ?? prontuarioForm ?? '—'}
+                      {atendimento.paciente.id ?? '—'}
                     </b>
                   </span>
                   <span>Entrada: {safeDateTimeLabel(atendimento.entrada)}</span>
@@ -99,109 +71,82 @@ export function TriagemViewDialog({
             </section>
 
             {/* ===== Especialidades ===== */}
-            {(filas.length > 0 || especialidadesForm.length > 0) && (
-              <section className="space-y-2">
-                {filas.length > 0 && (
-                  <Block label="Especialidades em espera (Fila)">
-                    <div className="flex flex-wrap gap-2">
-                      {filas.map((f, i) => (
-                        <Badge
-                          key={`fila-${i}`}
-                          variant={f.atendido == 0 ? 'default' : 'secondary'}
-                          className="whitespace-nowrap"
-                        >
-                          {f.fila?.especialidade?.nome ?? 'Especialidade'}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Block>
-                )}
-
-                {especialidadesForm.length > 0 && (
-                  <Block label="Especialidades selecionadas na triagem">
-                    <div className="flex flex-wrap gap-2">
-                      {especialidadesForm.map((esp: any) => (
-                        <Badge key={`esp-${esp.id}`} variant="outline">
-                          {esp?.nome ?? 'Especialidade'}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Block>
-                )}
-              </section>
+            {atendimento.filas && (
+              <div className="flex flex-wrap gap-2">
+                {atendimento.filas.map((f, i) => {
+                  const status = computeFilaStatus(atendimento, f)
+                  const name = f?.fila?.especialidade?.nome ?? 'Especialidade'
+                  return (
+                    <Badge
+                      key={i}
+                      className={`whitespace-nowrap ${badgeClass(status)}`}
+                    >
+                      {name}
+                    </Badge>
+                  )
+                })}
+              </div>
             )}
 
             {/* ===== Situação / Queixa ===== */}
-            <FieldIf label="Situação / Queixa Principal" exists={tri?.situacao}>
-              {tri?.situacao}
+            <FieldIf label="Situação / Queixa Principal" exists={atendimento.triagem?.queixa}>
+              {atendimento.triagem?.queixa}
             </FieldIf>
 
             {/* ===== Sinais Vitais ===== */}
-            {tri?.sinaisVitais && (
+            {atendimento.triagem && (
               <section>
                 <SectionTitle>Sinais vitais</SectionTitle>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
-                  {renderVital('peso', tri.sinaisVitais.peso)}
-                  {renderVital('temperatura', tri.sinaisVitais.temperatura)}
-                  {renderVital('fr', tri.sinaisVitais.fr)}
-                  {renderVital('sato2', tri.sinaisVitais.sato2)}
-                  {renderVital('pa', tri.sinaisVitais.pa)}
-                  {renderVital('fc', tri.sinaisVitais.fc)}
+                  {renderVital('peso', String(atendimento.triagem.peso))}
+                  {renderVital('temperatura', String(atendimento.triagem.temperatura))}
+                  {renderVital('fr', atendimento.triagem.fr)}
+                  {renderVital('sato2', atendimento.triagem.sato2)}
+                  {renderVital('pa', atendimento.triagem.pa)}
+                  {renderVital('fc', atendimento.triagem.fc)}
                 </div>
               </section>
             )}
 
             {/* ===== Comorbidades / Medicações / Alergias ===== */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldIf
-                label="Comorbidades"
-                exists={tri?.comorbidadeOp || tri?.comorbidadeDesc}
-              >
-                <KeyValue k="Opção" v={tri?.comorbidadeOp} />
-                {tri?.comorbidadeOp === 'Sim' && (
-                  <KeyValue k="Descrição" v={tri?.comorbidadeDesc} />
+              {atendimento.triagem && (<FieldIf label="Comorbidades" exists={atendimento.triagem.comorbidades}>
+                <KeyValue k="Opção" v={possuiComorbidades ? "Sim" : "Não"} />
+                {possuiComorbidades && (
+                  <KeyValue k="Descrição" v={atendimento.triagem.comorbidades} />
                 )}
-              </FieldIf>
+              </FieldIf>)}
 
-              <FieldIf
+              {atendimento.triagem && (<FieldIf
                 label="Medicação nas últimas 24h"
-                exists={tri?.medicacao24h}
+                exists={atendimento.triagem.medicacao24h}
               >
-                {tri?.medicacao24h}
-              </FieldIf>
+                {atendimento.triagem.medicacao24h}
+              </FieldIf>)}
 
-              <FieldIf label="Alergias" exists={true}>
-                <KeyValue
-                  k="Possui alergia?"
-                  v={
-                    tri?.alergia === 'sim'
-                      ? 'Sim'
-                      : tri?.alergia === 'não'
-                      ? 'Não'
-                      : '—'
-                  }
-                />
-                {tri?.alergia === 'sim' && (
-                  <KeyValue k="Quais" v={tri?.quaisAlergias} />
+              {atendimento.triagem && (<FieldIf label="Alergias" exists={atendimento.triagem.alergias}>
+                <KeyValue k="Possui alergia?" v={possuiAlergias ? "Sim" : "Não"} />
+                {possuiAlergias && (
+                  <KeyValue k="Quais" v={atendimento.triagem.alergias} />
                 )}
-              </FieldIf>
+              </FieldIf>)}
             </section>
 
             {/* ===== Informações da Coleta / Usuário ===== */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldIf
+              {atendimento.triagem && (<FieldIf
                 label="Coleta (informado na triagem)"
-                exists={tri?.coletadoPor || tri?.dataHora}
+                exists={atendimento.triagem?.usuario}
               >
-                {tri?.coletadoPor && (
-                  <KeyValue k="Profissional" v={tri.coletadoPor} />
+                {atendimento.triagem.usuario && (
+                  <KeyValue k="Profissional" v={atendimento.triagem.usuario.usuario} />
                 )}
-                {tri?.dataHora && <KeyValue k="Data/Hora" v={tri.dataHora} />}
-              </FieldIf>
+                {atendimento.triagem.data && <KeyValue k="Data/Hora" v={safeDateLabel(atendimento.triagem.data)} />}
+              </FieldIf>)}
 
-              <FieldIf label="Usuário (sistema)" exists={tri?.usuario?.usuario}>
-                {tri?.usuario?.usuario}
-              </FieldIf>
+              {atendimento.triagem?.usuario && (<FieldIf label="Usuário (sistema)" exists={atendimento.triagem.usuario.usuario}>
+                {atendimento.triagem.usuario.usuario}
+              </FieldIf>)}
             </section>
 
             <div className="flex justify-end">

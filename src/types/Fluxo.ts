@@ -2,6 +2,7 @@ import { Consultorio } from "./Consultorio";
 import { Fila } from "./Fila";
 import { Patient } from "./Patient";
 import { TriagemFormData } from "./Triagem";
+import { Usuario } from "./Usuario";
 
 export type AtendimentoFluxo = {
     id: number,
@@ -16,7 +17,7 @@ export type AtendimentoFluxo = {
     saida?: string,
     observacao?: string,
     filas?: AtendimentoFilas[],
-    triagem?: TriagemFormData
+    triagem?: TriagemFluxo
 }
 
 export type AtendimentoFilas = {
@@ -25,4 +26,33 @@ export type AtendimentoFilas = {
     fila_id: number,
     fila: Fila,
     atendido: number
+}
+
+export type FilasFluxo = {
+    id: number,
+    total: number
+    filas: FilaFluxo[]
+}
+
+export type FilaFluxo = {
+    id: number,
+    nome: string,
+    quantidade: number
+}
+
+export type TriagemFluxo = {
+    id: number,
+    usuario?: Usuario,
+    data: string,
+    observacao: string,
+    peso: number,
+    queixa: string,
+    temperatura: number,
+    fr: string,
+    sato2: string,
+    pa: string,
+    fc: string,
+    comorbidades: string,
+    medicacao24h: string,
+    alergias: string,
 }
