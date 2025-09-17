@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Printer, CheckCircle2, XCircle } from 'lucide-react'
 import {
   Accordion,
   AccordionContent,
@@ -42,10 +42,10 @@ interface CIDItem {
 }
 
 // --------------------
-// Mocks de fetch (trocar por API/Supabase)
+// Mocks (trocar por backend)
 // --------------------
 async function fetchPacienteById(pacienteId: string): Promise<Paciente | null> {
-  await new Promise(r => setTimeout(r, 200))
+  await new Promise(r => setTimeout(r, 150))
   if (!pacienteId) return null
   return {
     id: pacienteId,
@@ -60,7 +60,7 @@ async function fetchTriagemAtual(
   pacienteId: string,
   filaId: string
 ): Promise<Triagem | null> {
-  await new Promise(r => setTimeout(r, 200))
+  await new Promise(r => setTimeout(r, 150))
   if (!pacienteId || !filaId) return null
   return {
     pa: '130x85',
@@ -70,7 +70,7 @@ async function fetchTriagemAtual(
   }
 }
 
-// Mock curto de CIDs (substitua por consulta real depois)
+// CIDs (mock). TODO: puxar do backend
 const MOCK_CIDS: CIDItem[] = [
   { code: 'J00', description: 'Nasofaringite aguda (resfriado comum)' },
   {
@@ -78,12 +78,9 @@ const MOCK_CIDS: CIDItem[] = [
     description: 'Infecção aguda das vias aéreas superiores, não especificada'
   },
   { code: 'R51', description: 'Cefaleia' },
-  {
-    code: 'K21.0',
-    description: 'Doença do refluxo gastroesofágico com esofagite'
-  },
+  { code: 'K21.0', description: 'DRGE com esofagite' },
   { code: 'I10', description: 'Hipertensão essencial (primária)' },
-  { code: 'E11.9', description: 'Diabetes mellitus tipo 2 sem complicações' },
+  { code: 'E11.9', description: 'Diabetes tipo 2 sem complicações' },
   { code: 'M54.5', description: 'Dor lombar baixa' },
   { code: 'B34.9', description: 'Infecção viral, não especificada' },
   {
@@ -93,9 +90,9 @@ const MOCK_CIDS: CIDItem[] = [
   { code: 'R50.9', description: 'Febre, não especificada' }
 ]
 
-// Procedimentos de exemplo (médicos)
-const PROCEDIMENTOS_PRESETS = [
-  'Atendimento Médico', // padrão
+// Procedimentos (mock). TODO: puxar do backend
+const PROCEDIMENTOS_DB = [
+  'Atendimento Médico',
   'Consulta Ambulatorial',
   'Curativo Simples',
   'Sutura Simples',
@@ -103,63 +100,70 @@ const PROCEDIMENTOS_PRESETS = [
   'Medicação Intramuscular',
   'Nebulização',
   'Aferição de Pressão Arterial',
-  'Retirada de Pontos'
+  'Retirada de Pontos',
+  'Eletrocardiograma (ECG)',
+  'Administração de Medicação Oral'
 ] as const
+type Procedimento = (typeof PROCEDIMENTOS_DB)[number]
 
-type Procedimento = (typeof PROCEDIMENTOS_PRESETS)[number]
-
-// Exames (checklist curto)
-const EXAMES_PRESETS = [
-  'Hemograma completo',
-  'Glicemia em jejum',
-  'Perfil lipídico',
-  'Urina tipo 1',
-  'PCR (Proteína C-reativa)',
-  'Raio-X de tórax',
-  'Eletrocardiograma (ECG)'
+// Medicações (mock). TODO: puxar do backend
+const MEDICACOES_DB = [
+  'Dipirona 500 mg',
+  'Paracetamol 750 mg',
+  'Ibuprofeno 400 mg',
+  'Omeprazol 20 mg',
+  'Amoxicilina 500 mg',
+  'Azitromicina 500 mg',
+  'Loratadina 10 mg',
+  'Metformina 850 mg',
+  'Losartana 50 mg',
+  'Hidroclorotiazida 25 mg'
 ] as const
+type Medicacao = (typeof MEDICACOES_DB)[number]
 
-type Exame = (typeof EXAMES_PRESETS)[number]
+// --------------------
+// Helpers
+// --------------------
+const debounce = (fn: (...a: any[]) => void, ms = 500) => {
+  let t: any
+  return (...args: any[]) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), ms)
+  }
+}
 
+// --------------------
+// Página
+// --------------------
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
   const params = useParams<{ idFila: string }>()
   const search = useSearchParams()
 
-  const idFila = params?.idFila
+  const idFila = params?.idFila || ''
   const pacienteId = search.get('pacienteId') || ''
 
-  // Estados
+  // Estados base
   const [carregando, setCarregando] = useState(true)
   const [dadosPaciente, setDadosPaciente] = useState<Paciente | null>(null)
   const [triagem, setTriagem] = useState<Triagem | null>(null)
 
+  // Evolução
   const [evolucao, setEvolucao] = useState('')
-  const [prescricao, setPrescricao] = useState('')
 
-  // Procedimentos
-  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([
-    'Atendimento Médico'
-  ])
-  const toggleProcedimento = (p: Procedimento) => {
-    setProcedimentos(prev =>
-      prev.includes(p) ? prev.filter(i => i !== p) : [...prev, p]
-    )
-  }
-
-  // CIDs (até 5)
+  // CIDs
   const [cidQuery, setCidQuery] = useState('')
   const [selectedCids, setSelectedCids] = useState<CIDItem[]>([])
   const filteredCids = useMemo(() => {
+    // TODO: substituir por busca no backend
     const q = cidQuery.trim().toLowerCase()
-    if (!q) return MOCK_CIDS.slice(0, 6)
+    if (!q) return MOCK_CIDS.slice(0, 8)
     return MOCK_CIDS.filter(
       c =>
         c.code.toLowerCase().includes(q) ||
         c.description.toLowerCase().includes(q)
-    ).slice(0, 10)
+    ).slice(0, 20)
   }, [cidQuery])
-
   const addCid = (cid: CIDItem) => {
     if (selectedCids.find(c => c.code === cid.code)) return
     if (selectedCids.length >= 5) {
@@ -167,20 +171,127 @@ export default function AtendimentoConvencionalPage() {
       return
     }
     setSelectedCids(prev => [...prev, cid])
+    setDirty(true)
   }
-  const removeCid = (code: string) =>
+  const removeCid = (code: string) => {
     setSelectedCids(prev => prev.filter(c => c.code !== code))
+    setDirty(true)
+  }
 
-  // Exames checklist
-  const [exames, setExames] = useState<Record<Exame, boolean>>(() => {
-    return EXAMES_PRESETS.reduce(
+  // Procedimentos (agora com busca como o CID)
+  const [procedQuery, setProcedQuery] = useState('')
+  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([
+    'Atendimento Médico'
+  ])
+  const filteredProced = useMemo(() => {
+    // TODO: substituir por busca no backend
+    const q = procedQuery.trim().toLowerCase()
+    if (!q) return PROCEDIMENTOS_DB.slice(0, 10)
+    return PROCEDIMENTOS_DB.filter(p => p.toLowerCase().includes(q)).slice(
+      0,
+      20
+    )
+  }, [procedQuery])
+  const addProced = (p: Procedimento) => {
+    setProcedimentos(prev => (prev.includes(p) ? prev : [...prev, p]))
+    setDirty(true)
+  }
+  const removeProced = (p: Procedimento) => {
+    setProcedimentos(prev => prev.filter(i => i !== p))
+    setDirty(true)
+  }
+
+  // Exames (checklist)
+  const EXAMES_PRESETS = [
+    'Hemograma completo',
+    'Glicemia em jejum',
+    'Perfil lipídico',
+    'Urina tipo 1',
+    'PCR (Proteína C-reativa)',
+    'Raio-X de tórax',
+    'Eletrocardiograma (ECG)'
+  ] as const
+  type Exame = (typeof EXAMES_PRESETS)[number]
+  const [exames, setExames] = useState<Record<Exame, boolean>>(() =>
+    EXAMES_PRESETS.reduce(
       (acc, e) => ({ ...acc, [e]: false }),
       {} as Record<Exame, boolean>
     )
-  })
-  const toggleExame = (e: Exame) =>
+  )
+  const toggleExame = (e: Exame) => {
     setExames(prev => ({ ...prev, [e]: !prev[e] }))
+    setDirty(true)
+  }
 
+  // Prescrição: busca + tags + "Outra medicação"
+  const [medQuery, setMedQuery] = useState('')
+  const [medicacoes, setMedicacoes] = useState<string[]>([])
+  const filteredMeds = useMemo(() => {
+    // TODO: substituir por busca no backend
+    const q = medQuery.trim().toLowerCase()
+    if (!q) return MEDICACOES_DB.slice(0, 10)
+    return MEDICACOES_DB.filter(m => m.toLowerCase().includes(q)).slice(0, 20)
+  }, [medQuery])
+  const addMedicacao = (m: string) => {
+    setMedicacoes(prev => (prev.includes(m) ? prev : [...prev, m]))
+    setMedQuery('')
+    setDirty(true)
+  }
+  const removeMedicacao = (m: string) => {
+    setMedicacoes(prev => prev.filter(x => x !== m))
+    setDirty(true)
+  }
+  const [medOutra, setMedOutra] = useState('')
+  const addOutraMedicacao = () => {
+    const v = medOutra.trim()
+    if (!v) return
+    addMedicacao(v)
+    setMedOutra('')
+  }
+
+  // Cronômetro
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Dirty / navegação segura
+  const [dirty, setDirty] = useState(false)
+  const setDirtyDebounced = useMemo(
+    () => debounce(() => setDirty(true), 300),
+    []
+  )
+
+  // Autosave
+  const lsKey = `att-medico:${idFila}:${pacienteId}`
+  const saveLocal = useMemo(
+    () =>
+      debounce((data: any) => {
+        try {
+          localStorage.setItem(lsKey, JSON.stringify(data))
+        } catch {}
+      }, 500),
+    [lsKey]
+  )
+  const loadLocal = () => {
+    try {
+      const raw = localStorage.getItem(lsKey)
+      if (!raw) return
+      const data = JSON.parse(raw)
+      setEvolucao(data.evolucao ?? '')
+      setSelectedCids(data.selectedCids ?? [])
+      setProcedimentos(data.procedimentos ?? ['Atendimento Médico'])
+      setExames(data.exames ?? exames)
+      setMedicacoes(data.medicacoes ?? [])
+    } catch {}
+  }
+
+  // Simulação de salvar na API
+  async function saveAtendimento(payload: any) {
+    // TODO: ligar com server action / chamada Supabase
+    await new Promise(r => setTimeout(r, 300))
+    return { ok: true }
+  }
+
+  // Efeitos
   useEffect(() => {
     let ativo = true
     setCarregando(true)
@@ -192,33 +303,97 @@ export default function AtendimentoConvencionalPage() {
         if (!ativo) return
         setDadosPaciente(pac)
         setTriagem(tri)
+        loadLocal()
       })
       .finally(() => ativo && setCarregando(false))
     return () => {
       ativo = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pacienteId, idFila])
 
+  useEffect(() => {
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    const data = {
+      evolucao,
+      selectedCids,
+      procedimentos,
+      exames,
+      medicacoes
+    }
+    saveLocal(data)
+  }, [evolucao, selectedCids, procedimentos, exames, medicacoes, saveLocal])
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!dirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+
   // Ações
+  const formatElapsed = (s: number) => {
+    const mm = String(Math.floor(s / 60)).padStart(2, '0')
+    const ss = String(s % 60).padStart(2, '0')
+    return `${mm}:${ss}`
+  }
+
+  const handleImprimirReceita = () => {
+    // TODO: chamar serviço/rota que gera a receita via template (doc/PDF/print)
+    toast.message('Imprimir Receita (conectar ao template)')
+  }
+
   const handleFinalizar = async () => {
     const examesSelecionados = Object.entries(exames)
       .filter(([, v]) => v)
       .map(([k]) => k)
 
-    // TODO: enviar para API
-    // payload exemplo:
-    // {
-    //   idFila,
-    //   pacienteId,
-    //   evolucao,
-    //   prescricao,
-    //   procedimentos,
-    //   cids: selectedCids, // [{code, description}, ...]
-    //   exames: examesSelecionados
-    // }
+    const payload = {
+      idFila,
+      pacienteId,
+      evolucao: evolucao.trim(),
+      procedimentos,
+      cids: selectedCids, // [{code, description}]
+      exames: examesSelecionados,
+      prescricoes: medicacoes, // tags escolhidas + outras
+      iniciadoEm: Date.now() - elapsed * 1000,
+      duracaoSeg: elapsed
+    }
 
-    toast.success('Atendimento finalizado!')
-    router.push('/atendimento')
+    const vazio =
+      !payload.evolucao &&
+      procedimentos.length === 0 &&
+      selectedCids.length === 0 &&
+      examesSelecionados.length === 0 &&
+      medicacoes.length === 0
+
+    if (vazio) {
+      toast.warning(
+        'O atendimento está vazio. Adicione informações antes de finalizar.'
+      )
+      return
+    }
+
+    const res = await saveAtendimento(payload)
+    if (res?.ok) {
+      setDirty(false)
+      try {
+        localStorage.removeItem(lsKey)
+      } catch {}
+      toast.success('Atendimento finalizado!')
+      router.push('/atendimento')
+    } else {
+      toast.error('Não foi possível finalizar agora. Tente novamente.')
+    }
   }
 
   const handleCancelar = () => {
@@ -259,9 +434,9 @@ export default function AtendimentoConvencionalPage() {
   return (
     <div className="min-h-screen bg-[#f8f7f7] p-4">
       <div className="max-w-6xl mx-auto">
-        {/* CARD ÚNICO */}
-        <Card>
-          <CardHeader className="flex items-start justify-between gap-4">
+        {/* CABEÇALHO STICKY */}
+        <div className="sticky top-0 z-10 mb-3">
+          <div className="rounded-lg border bg-background/90 backdrop-blur px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -270,29 +445,37 @@ export default function AtendimentoConvencionalPage() {
               >
                 <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
               </Button>
-              <CardTitle className="text-2xl">
-                Atendimento Convencional
-              </CardTitle>
+              <span className="text-sm text-muted-foreground">
+                Paciente:{' '}
+                <span className="font-medium">
+                  {dadosPaciente?.nome || '—'}
+                </span>{' '}
+                · PA: <span className="font-medium">{triagem?.pa || '—'}</span>
+              </span>
             </div>
+            <div className="text-xs text-muted-foreground">
+              Fila: <span className="font-medium">{idFila}</span> · Tempo:{' '}
+              <span className="font-semibold">{formatElapsed(elapsed)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD */}
+        <Card>
+          <CardHeader className="flex items-start justify-between gap-4">
+            <CardTitle className="text-2xl">Atendimento Médico</CardTitle>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">
-                Fila: <span className="font-medium">{idFila}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Paciente:{' '}
+                ID Paciente:{' '}
                 <span className="font-medium">{dadosPaciente?.id}</span>
               </p>
             </div>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Section 1 — Info Paciente + Triagem (colapsável, igual ao Odonto) */}
+            {/* Section 1 — Info Paciente + Triagem */}
             <section className="border rounded-lg">
-              <Accordion
-                type="single"
-                collapsible
-                defaultValue={['info'] as any}
-              >
+              <Accordion type="single" collapsible defaultValue="info">
                 <AccordionItem value="info" className="border-b">
                   <AccordionTrigger className="px-4 py-3 text-base font-semibold">
                     Informações do Paciente e Triagem
@@ -368,7 +551,6 @@ export default function AtendimentoConvencionalPage() {
                           />
                         </div>
 
-                        {/* Badges iguais ao Odonto */}
                         <div className="col-span-2 flex flex-wrap gap-2 mt-2">
                           {triagem?.hipertensao === 'sim' && (
                             <Badge className="bg-rose-600">Hipertenso</Badge>
@@ -397,29 +579,33 @@ export default function AtendimentoConvencionalPage() {
               </div>
 
               <div className="px-4 pb-4 grid gap-6 md:grid-cols-2">
-                {/* Procedimentos */}
+                {/* Procedimentos (BUSCA + LISTA + TAGS) */}
                 <div>
                   <Label className="mb-2 mt-2 block">Procedimentos</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {PROCEDIMENTOS_PRESETS.map(p => {
-                      const active = procedimentos.includes(p)
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => toggleProcedimento(p)}
-                          className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                            active
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-background text-foreground border-muted-foreground/30 hover:bg-muted'
-                          }`}
-                          aria-pressed={active}
-                          title={p}
-                        >
-                          {p}
-                        </button>
-                      )
-                    })}
+                  <Input
+                    placeholder="Busque procedimento (ex: curativo, sutura...)"
+                    value={procedQuery}
+                    onChange={e => {
+                      setProcedQuery(e.target.value)
+                      setDirtyDebounced()
+                    }}
+                  />
+                  <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
+                    {filteredProced.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhum procedimento encontrado
+                      </div>
+                    )}
+                    {filteredProced.map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => addProced(p)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                      >
+                        {p}
+                      </button>
+                    ))}
                   </div>
 
                   {procedimentos.length > 0 && (
@@ -429,7 +615,7 @@ export default function AtendimentoConvencionalPage() {
                           {p}
                           <button
                             type="button"
-                            onClick={() => toggleProcedimento(p)}
+                            onClick={() => removeProced(p)}
                             className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
                             aria-label={`Remover ${p}`}
                           >
@@ -439,9 +625,11 @@ export default function AtendimentoConvencionalPage() {
                       ))}
                     </div>
                   )}
+
+                  {/* TODO: substituir filteredProced por resultados do backend */}
                 </div>
 
-                {/* CIDs */}
+                {/* CIDs (BUSCA + LISTA + TAGS) */}
                 <div>
                   <Label className="mb-2 mt-2 block">
                     Adicionar CID (máx. 5)
@@ -449,10 +637,12 @@ export default function AtendimentoConvencionalPage() {
                   <Input
                     placeholder="Busque por código (ex: J06.9) ou descrição (ex: cefaleia)"
                     value={cidQuery}
-                    onChange={e => setCidQuery(e.target.value)}
+                    onChange={e => {
+                      setCidQuery(e.target.value)
+                      setDirtyDebounced()
+                    }}
                   />
 
-                  {/* Sugestões */}
                   <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
                     {filteredCids.length === 0 && (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
@@ -474,7 +664,6 @@ export default function AtendimentoConvencionalPage() {
                     ))}
                   </div>
 
-                  {/* Tags selecionadas */}
                   {selectedCids.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {selectedCids.map(cid => (
@@ -497,42 +686,106 @@ export default function AtendimentoConvencionalPage() {
                       ))}
                     </div>
                   )}
+
+                  {/* TODO: substituir filteredCids por resultados do backend */}
                 </div>
               </div>
             </section>
 
-            {/* Section 3 — Evolução / Prescrição / Solicitação de Exames */}
+            {/* Section 3 — Evolução (w-full) */}
             <section className="border rounded-lg">
               <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
-                Evolução / Prescrição / Exames
+                Evolução
+              </div>
+              <div className="px-4 pb-4 mt-2">
+                <Textarea
+                  className="w-full min-h-[140px]"
+                  value={evolucao}
+                  onChange={e => {
+                    setEvolucao(e.target.value)
+                    setDirtyDebounced()
+                  }}
+                  placeholder="Descreva evolução, condutas e orientações clínicas..."
+                />
+              </div>
+            </section>
+
+            {/* Section 4 — Prescrição (busca + outra) e Exames (lado a lado) */}
+            <section className="border rounded-lg">
+              <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
+                Prescrição & Exames
               </div>
               <div className="px-4 pb-4 grid mt-2 grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Prescrição */}
                 <div>
-                  <Label htmlFor="evolucao">Evolução</Label>
-                  <Textarea
-                    id="evolucao"
-                    className="mt-2 min-h-[140px]"
-                    value={evolucao}
-                    onChange={e => setEvolucao(e.target.value)}
-                    placeholder="Descreva evolução, condutas, orientações clínicas..."
+                  <Label className="mb-2 mt-2 block">Buscar medicação</Label>
+                  <Input
+                    placeholder="Digite para buscar na base (ex: Dipirona 500 mg)"
+                    value={medQuery}
+                    onChange={e => {
+                      setMedQuery(e.target.value)
+                      setDirtyDebounced()
+                    }}
                   />
+                  <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
+                    {filteredMeds.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma medicação encontrada
+                      </div>
+                    )}
+                    {filteredMeds.map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => addMedicacao(m)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tags de medicações escolhidas */}
+                  {medicacoes.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {medicacoes.map(m => (
+                        <Badge key={m} variant="secondary" className="gap-1">
+                          {m}
+                          <button
+                            type="button"
+                            onClick={() => removeMedicacao(m)}
+                            className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
+                            aria-label={`Remover ${m}`}
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Outra medicação */}
+                  <div className="mt-4">
+                    <Label className="mb-2 block">Outra medicação</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Ex: Nimesulida 100 mg 12/12h por 3 dias"
+                        value={medOutra}
+                        onChange={e => setMedOutra(e.target.value)}
+                      />
+                      <Button type="button" onClick={addOutraMedicacao}>
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* TODO: trocar filteredMeds por resultados do backend */}
                 </div>
 
+                {/* Exames */}
                 <div>
-                  <Label htmlFor="prescricao">Prescrição</Label>
-                  <Textarea
-                    id="prescricao"
-                    className="mt-2 min-h-[140px]"
-                    value={prescricao}
-                    onChange={e => setPrescricao(e.target.value)}
-                    placeholder="Medicamentos e posologias (se houver)."
-                  />
-                </div>
-
-                {/* Exames (checklist) */}
-                <div className="md:col-span-2">
                   <Label className="mb-2 block">Solicitar Exames</Label>
-                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid sm:grid-cols-2 gap-3">
                     {EXAMES_PRESETS.map(ex => (
                       <label
                         key={ex}
@@ -550,19 +803,32 @@ export default function AtendimentoConvencionalPage() {
               </div>
             </section>
 
-            {/* Rodapé — Assinatura Digital (opcional futura) e Ações */}
-            <section className="flex flex-wrap gap-3 justify-end pt-2">
+            {/* Rodapé — Botões finais */}
+            <section className="flex flex-wrap gap-3 items-center justify-end pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleImprimirReceita}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir Receita
+              </Button>
+
               <Button
                 onClick={handleFinalizar}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="gap-2 bg-green-600 hover:bg-green-700"
               >
-                Finalizar atendimento
+                <CheckCircle2 className="h-4 w-4" />
+                Finalizar Atendimento
               </Button>
+
               <Button
                 variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/10"
+                className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
                 onClick={handleCancelar}
               >
+                <XCircle className="h-4 w-4" />
                 Cancelar
               </Button>
             </section>
