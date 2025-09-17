@@ -33,8 +33,17 @@ export async function encaminharPaciente(atendimento: number, fila: number): Pro
         throw new Error(`Erro ${res.status} ao buscar filas: ${msg}`);
     }
 }
+
 export async function removerPaciente(atendimento: number): Promise<void> {
     const res = await fetch(`${API_BASE}/api/${caminho}/remover/${atendimento}`, { headers: headers() });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Erro ${res.status} ao buscar filas: ${msg}`);
+    }
+}
+
+export async function iniciarAtendimento(atendimento: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/api/${caminho}/atendimento/${atendimento}`, { headers: headers() });
     if (!res.ok) {
         const msg = await res.text();
         throw new Error(`Erro ${res.status} ao buscar filas: ${msg}`);

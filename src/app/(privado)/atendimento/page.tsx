@@ -36,7 +36,7 @@ import {
   Eye
 } from 'lucide-react'
 import { ageFromISO, prioridadeColor, prioridadeDesc, safeDateTimeLabel, stripDiacritics, waitingTime } from '@/utils/functions'
-import { AtendimentoFluxo, getAll } from '@/services/fluxoService'
+import { AtendimentoFluxo, getAll, iniciarAtendimento } from '@/services/fluxoService'
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 
 // =====================
@@ -63,16 +63,15 @@ export default function FilaDeAtendimentoPage() {
   useEffect(() => {
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
-      const user = JSON.parse(storedUser);      
+      const user = JSON.parse(storedUser);
       setEspecialidade(user.especialidade_id);
       setUserName(user.usuario.toUpperCase());
     }
-    runSearch()
-  }, [])
+  }, []);
 
-  useEffect(() => {
-    runSearch()    
-  }, [query, filtroPrioridade])
+  useEffect(() => {   
+    runSearch()
+  }, [query, filtroPrioridade, userEspecialidade, userName])
 
   async function runSearch() {
     setLoading(true)
@@ -80,11 +79,10 @@ export default function FilaDeAtendimentoPage() {
       const q = query?.trim().toLowerCase() || ''
       const qNorm = stripDiacritics(q)
       const dados = (await getAll()).sort((a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime())
-      
       const filtrados = dados.filter(atendimento => {
         const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase())
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
-        const matchEspecialidade = userEspecialidade == null || atendimento.fila?.especialidade_id === userEspecialidade
+        const matchEspecialidade = userEspecialidade == undefined || atendimento.fila?.especialidade_id === userEspecialidade
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
         const matchPrioridade = filtroPrioridade.length === 0 || filtroPrioridade.map(s => s.toLowerCase()).includes(pacientePrioridade)
         return matchQuery && matchPrioridade && matchEspecialidade
@@ -98,8 +96,16 @@ export default function FilaDeAtendimentoPage() {
     }
   }
 
-  async function handleAtender(atendimento: number, especialidade: number) {
-    
+  async function handleAtender(atendimento: number) {
+    setLoading(true)
+    try {
+      await iniciarAtendimento(atendimento)
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setLoading(false)
+      router.push(`/atendimento/convencional?id=${atendimento}`)
+    }
   }
 
   const onVer = (at: AtendimentoFluxo) => {
@@ -261,7 +267,7 @@ export default function FilaDeAtendimentoPage() {
                       </Tooltip>
                       <Button
                         className="gap-2"
-                        onClick={() => handleAtender(p.id, p.fila?.especialidade_id ?? 0)}
+                        onClick={() => handleAtender(p.id)}
                         disabled={loading}
                         variant={'outline'}
                       >

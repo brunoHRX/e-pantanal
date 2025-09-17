@@ -45,6 +45,7 @@ import {
   deleteElement as deleteConsultorio
 } from '@/services/consultoriosService'
 import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
+import { getAll as getAllUsuarios, Usuario } from '@/services/usuariosService'
 
 export default function PageConsultorios() {
   const titulo = 'Consultórios'
@@ -56,6 +57,7 @@ export default function PageConsultorios() {
   const [query, setQuery] = useState<string>(searchParams.get('q') ?? '')
   const [results, setResults] = useState<Consultorio[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [resultById, setResultById] = useState<Consultorio>()
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +73,7 @@ export default function PageConsultorios() {
       id: 0, 
       nome: '',
       especialidade_id: 0,
+      usuario_id: 0,
     }
   })
 
@@ -112,6 +115,8 @@ export default function PageConsultorios() {
     try {
       const dadosEspecialidades = await getAllEspecialidades()
       setEspecialidades(dadosEspecialidades)
+      const dadosUsuarios = await getAllUsuarios()
+      setUsuarios(dadosUsuarios)
       
       const dados = await getAllConsultorios()
       const qNorm = stripDiacritics(q.toLowerCase().trim())
@@ -202,6 +207,7 @@ export default function PageConsultorios() {
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'nome', header: 'Nome' },
       { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
+      { accessorKey: 'usuario', header: 'Usuário', accessorFn: (row) => row.usuario?.usuario },
       {
         id: 'actions',
         header: 'Ações',
@@ -324,6 +330,36 @@ export default function PageConsultorios() {
                         {especialidades.map(esp => (
                           <option key={esp.id} value={esp.id}>
                             {esp.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="usuario_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usuário</FormLabel>
+                    <FormControl>
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background
+                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={field.value ?? ''}
+                        onChange={e =>
+                          field.onChange(
+                            e.target.value ? Number(e.target.value) : 0
+                          )
+                        }
+                      >
+                        <option value={0}>Selecione…</option>
+                        {usuarios.map(esp => (
+                          <option key={esp.id} value={esp.id}>
+                            {esp.usuario}
                           </option>
                         ))}
                       </select>

@@ -1,4 +1,5 @@
 import { Especialidade } from "./Especialidade"
+import { Usuario } from "./Usuario"
 
 export type Consultorio = {
     id: number,
@@ -7,4 +8,6 @@ export type Consultorio = {
     livre?: boolean,
     especialidade_id: number,
     especialidade: Especialidade
+    usuario_id: number,
+    usuario: Usuario
 }
