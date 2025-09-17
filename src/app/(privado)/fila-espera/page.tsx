@@ -43,6 +43,8 @@ import {
   ageFromISO,
   badgeClass,
   computeFilaStatus,
+  prioridadeColor,
+  prioridadeDesc,
   safeDateTimeLabel,
   stripDiacritics,
   waitingTime
@@ -300,6 +302,10 @@ export default function FilaEsperaPage() {
 
                     <span className="text-sm text-muted-foreground shrink-0">{safeDateTimeLabel(p.entrada)}</span>
                     <span className="font-semibold truncate" title={p.paciente.nome}>{p.paciente.nome}</span>
+
+                    {p.triagem && (<Badge className={`${prioridadeColor(p.triagem.prioridade)}`}>
+                      {prioridadeDesc(p.triagem.prioridade)}
+                    </Badge>)}
 
                     <div className="flex flex-wrap gap-2">
                       {p.filas?.map((f, i) => {

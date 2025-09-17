@@ -85,6 +85,7 @@ export default function TriagemPage() {
       medicacao24h: '',
       alergia: 'não',
       quaisAlergias: '',
+      prioridade: '',
       coletadoPor: userName,
       dataHora: new Date().toLocaleString('pt-BR')
     }
@@ -392,6 +393,24 @@ export default function TriagemPage() {
                     placeholder="Quais alergias?"
                   />
                 )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Prioridade */}
+            <div>
+              <Label>Prioridade</Label>
+              <div className="flex flex-col md:flex-row gap-3 mt-2">
+                <select
+                  {...register('prioridade')}
+                  className="border rounded px-3 py-2"
+                >
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                  <option value="urgente">Urgente</option>
+                </select>
               </div>
             </div>
 

@@ -25,4 +25,5 @@ export type TriagemFormData = {
     coletadoPor: string
     dataHora: string
     usuario?: Usuario
+    prioridade: string
 }
