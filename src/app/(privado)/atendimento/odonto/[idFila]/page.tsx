@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import {
   Accordion,
@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Printer, CheckCircle2, XCircle } from 'lucide-react'
 import Odontograma from '../componentes/Odontograma'
 import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
@@ -41,7 +41,7 @@ interface Triagem {
 // Mocks (trocar por API/Supabase)
 // --------------------
 async function fetchPacienteById(pacienteId: string): Promise<Paciente | null> {
-  await new Promise(r => setTimeout(r, 250))
+  await new Promise(r => setTimeout(r, 200))
   if (!pacienteId) return null
   return {
     id: pacienteId,
@@ -56,7 +56,7 @@ async function fetchTriagemAtual(
   pacienteId: string,
   filaId: string
 ): Promise<Triagem | null> {
-  await new Promise(r => setTimeout(r, 250))
+  await new Promise(r => setTimeout(r, 200))
   if (!pacienteId || !filaId) return null
   return {
     pa: '120x80',
@@ -66,31 +66,160 @@ async function fetchTriagemAtual(
   }
 }
 
+// Procedimentos Odontológicos (mock primário) — TODO: puxar do backend
+const PROCED_ODONTO_DB = [
+  'Profilaxia (limpeza)',
+  'Raspagem supra gengival',
+  'Restauração Amálgama',
+  'Restauração Resina Composta',
+  'Restauração Provisória',
+  'Tratamento Endodôntico (canal)',
+  'Curativo Endodôntico',
+  'Extração Simples',
+  'Extração de Terceiro Molar',
+  'Cirurgia Periodontal',
+  'Selante',
+  'Aplicação de Flúor',
+  'Cimentação de Coroa/Onlay/Inlay',
+  'Ajuste Oclusal',
+  'Radiografia Periapical',
+  'Controle de Placa/Orientação'
+] as const
+type ProcedOdonto = (typeof PROCED_ODONTO_DB)[number]
+
+// Medicações (mock) — TODO: puxar do backend
+const MEDICACOES_DB = [
+  'Dipirona 500 mg',
+  'Paracetamol 750 mg',
+  'Ibuprofeno 400 mg',
+  'Amoxicilina 500 mg',
+  'Azitromicina 500 mg',
+  'Loratadina 10 mg',
+  'Naproxeno 500 mg',
+  'Nimesulida 100 mg',
+  'Omeprazol 20 mg',
+  'Dexametasona 4 mg'
+] as const
+
+// --------------------
+// Helpers
+// --------------------
+const debounce = (fn: (...a: any[]) => void, ms = 500) => {
+  let t: any
+  return (...args: any[]) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), ms)
+  }
+}
+
 export default function AtendimentoOdontologicoPage() {
   const router = useRouter()
   const params = useParams<{ idFila: string }>()
   const search = useSearchParams()
 
-  const idFila = params?.idFila
+  const idFila = params?.idFila || ''
   const pacienteId = search.get('pacienteId') || ''
 
-  // estados
+  // estados base
   const [carregando, setCarregando] = useState(true)
   const [dadosPaciente, setDadosPaciente] = useState<Paciente | null>(null)
   const [triagem, setTriagem] = useState<Triagem | null>(null)
 
-  // Campos do atendimento
-  const [evolucao, setEvolucao] = useState<string>('')
-  const [prescricao, setPrescricao] = useState<string>('')
+  // cronômetro
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Seleções do Odontograma (por dente) — CONTROLADO
+  // dirty / bloqueio saída
+  const [dirty, setDirty] = useState(false)
+  const setDirtyDebounced = useMemo(
+    () => debounce(() => setDirty(true), 300),
+    []
+  )
+
+  // autosave
+  const lsKey = `att-odonto:${idFila}:${pacienteId}`
+  const saveLocal = useMemo(
+    () =>
+      debounce((data: any) => {
+        try {
+          localStorage.setItem(lsKey, JSON.stringify(data))
+        } catch {}
+      }, 500),
+    [lsKey]
+  )
+  const loadLocal = () => {
+    try {
+      const raw = localStorage.getItem(lsKey)
+      if (!raw) return
+      const data = JSON.parse(raw)
+      setEvolucao(data.evolucao ?? '')
+      setOdontoSelections(data.odontograma ?? {})
+      setProcedSelecionados(data.procedSelecionados ?? [])
+      setMedicacoes(data.medicacoes ?? [])
+    } catch {}
+  }
+
+  // campos
+  const [evolucao, setEvolucao] = useState<string>('')
+
+  // odontograma controlado
   const [odontoSelections, setOdontoSelections] = useState<ToothSelectionsMap>(
     {}
   )
 
-  // Accordion controlado somente para Info+Triagem
+  // accordion infos
   const [infoOpen, setInfoOpen] = useState<string | undefined>('info')
 
+  // Procedimentos Odonto — busca + lista + tags
+  const [procedQuery, setProcedQuery] = useState('')
+  const [procedSelecionados, setProcedSelecionados] = useState<ProcedOdonto[]>(
+    []
+  )
+  const filteredProced = useMemo(() => {
+    // TODO: substituir por busca no backend
+    const q = procedQuery.trim().toLowerCase()
+    if (!q) return PROCED_ODONTO_DB.slice(0, 12)
+    return PROCED_ODONTO_DB.filter(p => p.toLowerCase().includes(q)).slice(
+      0,
+      30
+    )
+  }, [procedQuery])
+  const addProced = (p: ProcedOdonto) => {
+    setProcedSelecionados(prev => (prev.includes(p) ? prev : [...prev, p]))
+    setDirty(true)
+  }
+  const removeProced = (p: ProcedOdonto) => {
+    setProcedSelecionados(prev => prev.filter(i => i !== p))
+    setDirty(true)
+  }
+
+  // Prescrição (igual ao atendimento médico): busca + tags + "Outra medicação"
+  const [medQuery, setMedQuery] = useState('')
+  const [medicacoes, setMedicacoes] = useState<string[]>([])
+  const filteredMeds = useMemo(() => {
+    // TODO: substituir por busca no backend
+    const q = medQuery.trim().toLowerCase()
+    if (!q) return MEDICACOES_DB.slice(0, 10)
+    return MEDICACOES_DB.filter(m => m.toLowerCase().includes(q)).slice(0, 20)
+  }, [medQuery])
+  const addMedicacao = (m: string) => {
+    setMedicacoes(prev => (prev.includes(m) ? prev : [...prev, m]))
+    setMedQuery('')
+    setDirty(true)
+  }
+  const removeMedicacao = (m: string) => {
+    setMedicacoes(prev => prev.filter(x => x !== m))
+    setDirty(true)
+  }
+  const [medOutra, setMedOutra] = useState('')
+  const addOutraMedicacao = () => {
+    const v = medOutra.trim()
+    if (!v) return
+    addMedicacao(v)
+    setMedOutra('')
+  }
+
+  // carregar dados
   useEffect(() => {
     let ativo = true
     setCarregando(true)
@@ -102,6 +231,7 @@ export default function AtendimentoOdontologicoPage() {
         if (!ativo) return
         setDadosPaciente(pac)
         setTriagem(tri)
+        loadLocal()
       })
       .finally(() => ativo && setCarregando(false))
     return () => {
@@ -109,18 +239,109 @@ export default function AtendimentoOdontologicoPage() {
     }
   }, [pacienteId, idFila])
 
-  // Ações
+  // cronômetro
+  useEffect(() => {
+    timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  // autosave
+  useEffect(() => {
+    const data = {
+      evolucao,
+      odontograma: odontoSelections,
+      procedSelecionados,
+      medicacoes
+    }
+    saveLocal(data)
+  }, [evolucao, odontoSelections, procedSelecionados, medicacoes, saveLocal])
+
+  // bloquear saída se sujo
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!dirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+
+  // atalhos
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isSave = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'
+      if (isSave) {
+        e.preventDefault()
+        void handleFinalizar()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancelar()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, []) // eslint-disable-line
+
+  // utils
+  const formatElapsed = (s: number) => {
+    const mm = String(Math.floor(s / 60)).padStart(2, '0')
+    const ss = String(s % 60).padStart(2, '0')
+    return `${mm}:${ss}`
+  }
+
+  // simular salvar na API
+  async function saveAtendimento(payload: any) {
+    // TODO: ligar com server action / Supabase
+    await new Promise(r => setTimeout(r, 300))
+    return { ok: true }
+  }
+
+  // ações
+  const handleImprimirReceita = () => {
+    // TODO: rota que aplica Template e retorna PDF/print
+    toast.message('Imprimir Receita (conectar ao template)')
+  }
+
   const handleFinalizar = async () => {
-    // TODO: enviar para API:
-    // {
-    //   idFila,
-    //   pacienteId,
-    //   evolucao,
-    //   prescricao,
-    //   odontograma: odontoSelections
-    // }
-    toast.success('Atendimento finalizado!')
-    router.push('/atendimento')
+    const payload = {
+      idFila,
+      pacienteId,
+      evolucao: evolucao.trim(),
+      odontograma: odontoSelections, // mapa por dente/faces/procedures
+      procedimentosOdonto: procedSelecionados, // lista manual selecionada
+      prescricoes: medicacoes, // meds por tag (inclui “Outra medicação”)
+      iniciadoEm: Date.now() - elapsed * 1000,
+      duracaoSeg: elapsed
+    }
+
+    const vazio =
+      !payload.evolucao &&
+      Object.keys(odontoSelections).length === 0 &&
+      procedSelecionados.length === 0 &&
+      medicacoes.length === 0
+
+    if (vazio) {
+      toast.warning(
+        'O atendimento está vazio. Adicione informações antes de finalizar.'
+      )
+      return
+    }
+
+    const res = await saveAtendimento(payload)
+    if (res?.ok) {
+      setDirty(false)
+      try {
+        localStorage.removeItem(lsKey)
+      } catch {}
+      toast.success('Atendimento finalizado!')
+      router.push('/atendimento')
+    } else {
+      toast.error('Não foi possível finalizar agora. Tente novamente.')
+    }
   }
 
   const handleCancelar = () => {
@@ -128,6 +349,7 @@ export default function AtendimentoOdontologicoPage() {
     router.push('/atendimento')
   }
 
+  // resumo odontograma
   const selectionsArray = Object.values(odontoSelections).filter(
     s => (s.procedures?.length || 0) > 0
   )
@@ -165,18 +387,36 @@ export default function AtendimentoOdontologicoPage() {
   return (
     <div className="min-h-screen bg-[#f8f7f7] p-4">
       <div className="mx-auto w-full max-w-7xl">
-        {/* CARD ÚNICO */}
-        <Card className="w-full">
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        {/* CABEÇALHO STICKY */}
+        <div className="sticky top-0 z-10 mb-3">
+          <div className="rounded-lg border bg-background/90 backdrop-blur px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push('/atendimento')}
-                className="w-full sm:w-auto"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
               </Button>
+              <span className="text-sm text-muted-foreground">
+                Paciente:{' '}
+                <span className="font-medium">
+                  {dadosPaciente?.nome || '—'}
+                </span>{' '}
+                · PA: <span className="font-medium">{triagem?.pa || '—'}</span>
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Fila: <span className="font-medium">{idFila}</span> · Tempo:{' '}
+              <span className="font-semibold">{formatElapsed(elapsed)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD ÚNICO */}
+        <Card className="w-full">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <CardTitle className="text-xl sm:text-2xl">
                 Atendimento Odontológico
               </CardTitle>
@@ -243,7 +483,7 @@ export default function AtendimentoOdontologicoPage() {
                         </div>
                       </div>
 
-                      {/* Espaço responsivo (só em ≥ lg) */}
+                      {/* espaço */}
                       <div className="hidden lg:block" />
 
                       {/* Triagem */}
@@ -298,18 +538,76 @@ export default function AtendimentoOdontologicoPage() {
               </Accordion>
             </div>
 
-            {/* Section 2 — Odontograma (sem colapse) + Resumo */}
+            {/* Section 2 — Procedimentos (BUSCA + LISTA + TAGS) ANTES do Odontograma */}
+            <div className="border rounded-lg">
+              <div className="px-4 py-3 text-base font-semibold border-b">
+                Procedimentos Odontológicos
+              </div>
+
+              <div className="px-4 pb-4">
+                <Label className="mb-2 mt-2 block">Buscar procedimento</Label>
+                <Input
+                  placeholder="Ex: restauração, extração, endodontia..."
+                  value={procedQuery}
+                  onChange={e => {
+                    setProcedQuery(e.target.value)
+                    setDirtyDebounced()
+                  }}
+                />
+                <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
+                  {filteredProced.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Nenhum procedimento encontrado
+                    </div>
+                  )}
+                  {filteredProced.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => addProced(p)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+
+                {procedSelecionados.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {procedSelecionados.map(p => (
+                      <Badge key={p} variant="secondary" className="gap-1">
+                        {p}
+                        <button
+                          type="button"
+                          onClick={() => removeProced(p)}
+                          className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
+                          aria-label={`Remover ${p}`}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* TODO: trocar filteredProced por resultados do backend */}
+              </div>
+            </div>
+
+            {/* Section 3 — Odontograma + Resumo */}
             <div className="border rounded-lg">
               <div className="px-4 py-3 text-base font-semibold border-b">
                 Odontograma
               </div>
 
-              {/* Odontograma sempre visível; contêiner responsivo sem overflow */}
               <div className="px-2 sm:px-4 pb-4 w-full">
                 <div className="w-full max-w-full">
                   <Odontograma
                     value={odontoSelections}
-                    onChange={setOdontoSelections}
+                    onChange={v => {
+                      setOdontoSelections(v)
+                      setDirty(true)
+                    }}
                   />
                 </div>
               </div>
@@ -340,7 +638,6 @@ export default function AtendimentoOdontologicoPage() {
                               Faces: {sel.faces.join('/')}
                             </Badge>
                           )}
-                          {/* Remover todos deste dente (opcional) */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -357,7 +654,6 @@ export default function AtendimentoOdontologicoPage() {
                           </Button>
                         </div>
 
-                        {/* Procedimentos com “×” para remover individualmente */}
                         <div className="flex flex-wrap gap-2 pl-0 sm:pl-6">
                           {sel.procedures.map(p => (
                             <Badge
@@ -386,6 +682,7 @@ export default function AtendimentoOdontologicoPage() {
                                     }
                                     return next
                                   })
+                                  setDirty(true)
                                 }}
                                 className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
                                 aria-label={`Remover ${p}`}
@@ -403,48 +700,125 @@ export default function AtendimentoOdontologicoPage() {
               </div>
             </div>
 
-            {/* Section 3 — Evolução / Tratamento / Prescrição */}
+            {/* Section 5 — Evolução / Tratamento */}
             <div className="border rounded-lg">
               <div className="px-4 py-3 text-base font-semibold border-b">
-                Evolução / Tratamento / Prescrição
+                Evolução / Tratamento
               </div>
-              <div className="px-4 pb-4 grid grid-cols-1 mt-4 gap-4">
+              <div className="px-4 pb-4 mt-2">
+                <Label htmlFor="evolucao">Evolução e Condutas</Label>
+                <Textarea
+                  id="evolucao"
+                  className="mt-2 min-h-[140px]"
+                  value={evolucao}
+                  onChange={e => {
+                    setEvolucao(e.target.value)
+                    setDirtyDebounced()
+                  }}
+                  placeholder="Descreva evolução, procedimentos realizados, materiais utilizados..."
+                />
+              </div>
+            </div>
+
+            {/* Section 4 — Prescrição (busca + outra) */}
+            <div className="border rounded-lg">
+              <div className="px-4 py-3 text-base font-semibold border-b">
+                Prescrição
+              </div>
+              <div className="px-4 pb-4 mt-2 grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="evolucao">Evolução e Condutas</Label>
-                  <Textarea
-                    id="evolucao"
-                    className="mt-2 min-h-[140px]"
-                    value={evolucao}
-                    onChange={e => setEvolucao(e.target.value)}
-                    placeholder="Descreva evolução, procedimentos realizados, materiais utilizados..."
+                  <Label className="mb-2 mt-2 block">Buscar medicação</Label>
+                  <Input
+                    placeholder="Digite para buscar na base (ex: Amoxicilina 500 mg)"
+                    value={medQuery}
+                    onChange={e => {
+                      setMedQuery(e.target.value)
+                      setDirtyDebounced()
+                    }}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="prescricao">Possível Prescrição</Label>
-                  <Textarea
-                    id="prescricao"
-                    className="mt-2 min-h-[100px]"
-                    value={prescricao}
-                    onChange={e => setPrescricao(e.target.value)}
-                    placeholder="Medicamentos prescritos e orientações pós-procedimento (se houver)."
-                  />
+                  <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
+                    {filteredMeds.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma medicação encontrada
+                      </div>
+                    )}
+                    {filteredMeds.map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => addMedicacao(m)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tags selecionadas */}
+                  {medicacoes.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {medicacoes.map(m => (
+                        <Badge key={m} variant="secondary" className="gap-1">
+                          {m}
+                          <button
+                            type="button"
+                            onClick={() => removeMedicacao(m)}
+                            className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
+                            aria-label={`Remover ${m}`}
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Outra medicação */}
+                  <div className="mt-4">
+                    <Label className="mb-2 block">Outra medicação</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Ex: Nimesulida 100 mg 12/12h por 3 dias"
+                        value={medOutra}
+                        onChange={e => setMedOutra(e.target.value)}
+                      />
+                      <Button type="button" onClick={addOutraMedicacao}>
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* TODO: trocar filteredMeds por resultados do backend */}
                 </div>
               </div>
             </div>
 
-            {/* Botões de ação */}
+            {/* Rodapé — Botões */}
             <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
               <Button
-                onClick={handleFinalizar}
-                className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
+                type="button"
+                variant="secondary"
+                onClick={handleImprimirReceita}
+                className="gap-2 w-full sm:w-auto"
               >
+                <Printer className="h-4 w-4" />
+                Imprimir Receita
+              </Button>
+
+              <Button
+                onClick={handleFinalizar}
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
+              >
+                <CheckCircle2 className="h-4 w-4" />
                 Finalizar atendimento
               </Button>
+
               <Button
                 variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/10 w-full sm:w-auto"
+                className="gap-2 border-destructive text-destructive hover:bg-destructive/10 w-full sm:w-auto"
                 onClick={handleCancelar}
               >
+                <XCircle className="h-4 w-4" />
                 Cancelar
               </Button>
             </div>
