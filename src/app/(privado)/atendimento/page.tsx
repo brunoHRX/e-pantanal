@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -28,10 +32,12 @@ import {
   ShieldAlert,
   MapPin,
   X,
-  Search
+  Search,
+  Eye
 } from 'lucide-react'
-import { stripDiacritics } from '@/utils/functions'
+import { ageFromISO, prioridadeColor, prioridadeDesc, safeDateTimeLabel, stripDiacritics, waitingTime } from '@/utils/functions'
 import { AtendimentoFluxo, getAll } from '@/services/fluxoService'
+import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 
 // =====================
 // Página
@@ -44,6 +50,8 @@ export default function FilaDeAtendimentoPage() {
   const [filtroPrioridade, setFiltroPrioridade] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
+  const [triagemOpen, setTriagemOpen] = useState(false)
+  const [triagemSelecionada, setTriagemSelecionada] = useState<AtendimentoFluxo>()
 
   const prioridades = [
     { id: "baixa", nome: "Baixa" },
@@ -61,6 +69,10 @@ export default function FilaDeAtendimentoPage() {
     }
     runSearch()
   }, [])
+
+  useEffect(() => {
+    runSearch()    
+  }, [query, filtroPrioridade])
 
   async function runSearch() {
     setLoading(true)
@@ -84,6 +96,15 @@ export default function FilaDeAtendimentoPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleAtender(atendimento: number, especialidade: number) {
+    
+  }
+
+  const onVer = (at: AtendimentoFluxo) => {
+    setTriagemSelecionada(at)
+    setTriagemOpen(true)
   }
 
   return (
@@ -182,90 +203,70 @@ export default function FilaDeAtendimentoPage() {
         )}
 
         {!loading &&
-          results.map(atendimento => {
+          results.map(p => {
             return (
-              <Card key={atendimento.id}>
+              <Card key={p.id}>
                 <CardContent className="p-4">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     {/* Bloco 1: identidade e meta */}
-                    <div className="flex items-start gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-base">
-                            {item.nome}
-                          </span>
+                    <div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="text-sm text-muted-foreground shrink-0">{safeDateTimeLabel(p.entrada)}</span>
+                          <span className="font-semibold truncate" title={p.paciente.nome}>{p.paciente.nome}</span>
                           <Badge variant="secondary">
-                            Pront. {item.prontuario}
+                            Pront. {p.paciente.id}
                           </Badge>
-                          {item.unidade && (
-                            <Badge variant="outline" className="gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {item.unidade}
-                            </Badge>
-                          )}
+                          {p.triagem && (<Badge className={`${prioridadeColor(p.triagem.prioridade)}`}>
+                            {prioridadeDesc(p.triagem.prioridade)}
+                          </Badge>)}
                         </div>
-
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                          <span>
-                            {item.idade} anos
-                            {item.genero ? ` • ${item.genero}` : ''}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            Chegou há {mins} min
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <Activity className="h-3.5 w-3.5" />
-                            Status: {item.status}
-                          </span>
-                        </div>
-
-                        {item.queixaPrincipal && (
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                              <ShieldAlert className="h-3.5 w-3.5" /> Queixa:
-                            </span>{' '}
-                            {item.queixaPrincipal}
-                          </p>
-                        )}
                       </div>
-                    </div>
 
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                        <span>⏳ {waitingTime(p.entrada)}</span>
+                        <span>🎂 {ageFromISO(p.paciente.dataNascimento)}</span>
+                        <span className="hidden md:inline">
+                          👨‍⚕️ Responsável triagem:{' '}
+                          <span className="font-medium text-foreground">
+                            {p.triagem?.usuario?.usuario}
+                          </span>
+                        </span>
+                      </div>
+
+                      {p.triagem?.queixa && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                            <ShieldAlert className="h-3.5 w-3.5" /> Queixa:
+                          </span>{' '}
+                          {p.triagem?.queixa}
+                        </p>
+                      )}
+                    </div>
                     {/* Bloco 2: prioridade + ações */}
                     <div className="flex items-center gap-2 md:self-center">
-                      <Badge className={`${priClass}`}>
-                        {item.prioridade.toUpperCase()}
-                      </Badge>
-
                       {/* Atendimento Odonto */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label="Visualizar triagem"
+                            onClick={() => onVer(p)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Visualizar Triagem</TooltipContent>
+                      </Tooltip>
                       <Button
                         className="gap-2"
-                        onClick={() => handleAtenderOdonto(item)}
-                        disabled={abrindo}
-                        variant={
-                          item.atribuicoes.especialidade === 'odonto'
-                            ? 'default'
-                            : 'outline'
-                        }
+                        onClick={() => handleAtender(p.id, p.fila?.especialidade_id ?? 0)}
+                        disabled={loading}
+                        variant={'outline'}
                       >
                         <Stethoscope className="h-4 w-4" />
-                        Atendimento Odonto
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-
-                      {/* Atendimento Convencional */}
-                      <Button
-                        className="gap-2"
-                        onClick={() => handleAtenderConvencional(item)}
-                        disabled={abrindo}
-                        variant={
-                          item.atribuicoes.especialidade === 'convencional'
-                            ? 'default'
-                            : 'outline'
-                        }
-                      >
-                        <Timer className="h-4 w-4" />
-                        Atendimento Convencional
+                          Iniciar atendimento
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -274,6 +275,12 @@ export default function FilaDeAtendimentoPage() {
               </Card>
             )
           })}
+          
+          {triagemSelecionada && (<TriagemViewDialog
+            open={triagemOpen}
+            onOpenChange={setTriagemOpen}
+            atendimento={triagemSelecionada}
+          />)}
       </div>
     </div>
   )
