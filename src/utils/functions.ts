@@ -91,3 +91,41 @@ export function computeFilaStatus(
     if (f?.atendido == 1) response = 'expired'
     return response
 }
+
+export function prioridadeColor(prioridade:string): string {
+    var cor = "";
+    switch (prioridade) {
+        case "urgente":
+            cor = "bg-red-600";
+            break;
+        case "alta":
+            cor = "bg-orange-600";
+            break;
+        case "media":
+            cor = "bg-amber-600";
+            break;
+        default:
+            cor = "bg-emerald-600";
+            break;
+    }
+    return cor;
+}
+
+export function prioridadeDesc(prioridade:string): string {
+    var cor = "";
+    switch (prioridade) {
+        case "urgente":
+            cor = "Urgente";
+            break;
+        case "alta":
+            cor = "Alta";
+            break;
+        case "media":
+            cor = "Média";
+            break;
+        default:
+            cor = "Baixa";
+            break;
+    }
+    return cor;
+}

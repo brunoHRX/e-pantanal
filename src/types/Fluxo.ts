@@ -55,4 +55,5 @@ export type TriagemFluxo = {
     comorbidades: string,
     medicacao24h: string,
     alergias: string,
+    prioridade: string,
 }
