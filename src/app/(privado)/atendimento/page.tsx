@@ -20,17 +20,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import {
   Stethoscope,
-  Timer,
   Filter,
-  Activity,
-  CalendarClock,
   ChevronRight,
   ShieldAlert,
-  MapPin,
   X,
   Search,
   Eye
@@ -70,7 +65,7 @@ export default function FilaDeAtendimentoPage() {
   }, []);
 
   useEffect(() => {   
-    runSearch()
+    if (userEspecialidade) runSearch()
   }, [query, filtroPrioridade, userEspecialidade, userName])
 
   async function runSearch() {
@@ -84,8 +79,11 @@ export default function FilaDeAtendimentoPage() {
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
         const matchEspecialidade = userEspecialidade == undefined || atendimento.fila?.especialidade_id === userEspecialidade
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
+        var emptyConsultorio = atendimento.consultorio == null ? true : false
+        // emptyConsultorio = true
         const matchPrioridade = filtroPrioridade.length === 0 || filtroPrioridade.map(s => s.toLowerCase()).includes(pacientePrioridade)
-        return matchQuery && matchPrioridade && matchEspecialidade
+        return matchQuery && matchPrioridade && matchEspecialidade && emptyConsultorio
+        // return true
       })
       setResults(filtrados)
     } catch (err) {
@@ -104,7 +102,7 @@ export default function FilaDeAtendimentoPage() {
       toast.error((err as Error).message)
     } finally {
       setLoading(false)
-      router.push(`/atendimento/convencional?id=${atendimento}`)
+      router.push(`/atendimento/convencional/${atendimento}`)
     }
   }
 

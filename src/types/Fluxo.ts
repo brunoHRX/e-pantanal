@@ -1,7 +1,7 @@
+import { Cid } from "./Cid";
 import { Consultorio } from "./Consultorio";
 import { Fila } from "./Fila";
 import { Patient } from "./Patient";
-import { TriagemFormData } from "./Triagem";
 import { Usuario } from "./Usuario";
 
 export type AtendimentoFluxo = {
@@ -18,6 +18,7 @@ export type AtendimentoFluxo = {
     observacao?: string,
     filas?: AtendimentoFilas[],
     triagem?: TriagemFluxo
+    cids?: Cid[],
 }
 
 export type AtendimentoFilas = {

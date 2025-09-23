@@ -17,113 +17,12 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
+import { Cid, getAll as getAllCids} from '@/services/cidsService'
+import { Medicamento, getAll as getAllMedicamentos } from '@/services/medicamentoService'
+import { Procedimento, getAll as getAllProcedimentos } from '@/services/procedimentoService'
+import { AtendimentoFluxo } from '@/types/Fluxo'
+import { getAtendimentoById } from '@/services/fluxoService'
 
-// --------------------
-// Tipos
-// --------------------
-interface Paciente {
-  id: string
-  nome: string
-  dataNascimento: string
-  cpf: string
-  contato: string
-}
-
-interface Triagem {
-  pa: string
-  hipertensao: string
-  diabetes: string
-  alergia: string
-}
-
-interface CIDItem {
-  code: string
-  description: string
-}
-
-// --------------------
-// Mocks (trocar por backend)
-// --------------------
-async function fetchPacienteById(pacienteId: string): Promise<Paciente | null> {
-  await new Promise(r => setTimeout(r, 150))
-  if (!pacienteId) return null
-  return {
-    id: pacienteId,
-    nome: 'Carlos Ferreira',
-    dataNascimento: '1986-03-22',
-    cpf: '987.654.321-00',
-    contato: '(67) 98888-7777'
-  }
-}
-
-async function fetchTriagemAtual(
-  pacienteId: string,
-  filaId: string
-): Promise<Triagem | null> {
-  await new Promise(r => setTimeout(r, 150))
-  if (!pacienteId || !filaId) return null
-  return {
-    pa: '130x85',
-    hipertensao: 'não',
-    diabetes: 'não',
-    alergia: 'não'
-  }
-}
-
-// CIDs (mock). TODO: puxar do backend
-const MOCK_CIDS: CIDItem[] = [
-  { code: 'J00', description: 'Nasofaringite aguda (resfriado comum)' },
-  {
-    code: 'J06.9',
-    description: 'Infecção aguda das vias aéreas superiores, não especificada'
-  },
-  { code: 'R51', description: 'Cefaleia' },
-  { code: 'K21.0', description: 'DRGE com esofagite' },
-  { code: 'I10', description: 'Hipertensão essencial (primária)' },
-  { code: 'E11.9', description: 'Diabetes tipo 2 sem complicações' },
-  { code: 'M54.5', description: 'Dor lombar baixa' },
-  { code: 'B34.9', description: 'Infecção viral, não especificada' },
-  {
-    code: 'N39.0',
-    description: 'Infecção do trato urinário, local não especificado'
-  },
-  { code: 'R50.9', description: 'Febre, não especificada' }
-]
-
-// Procedimentos (mock). TODO: puxar do backend
-const PROCEDIMENTOS_DB = [
-  'Atendimento Médico',
-  'Consulta Ambulatorial',
-  'Curativo Simples',
-  'Sutura Simples',
-  'Retorno Pós-Operatório',
-  'Medicação Intramuscular',
-  'Nebulização',
-  'Aferição de Pressão Arterial',
-  'Retirada de Pontos',
-  'Eletrocardiograma (ECG)',
-  'Administração de Medicação Oral'
-] as const
-type Procedimento = (typeof PROCEDIMENTOS_DB)[number]
-
-// Medicações (mock). TODO: puxar do backend
-const MEDICACOES_DB = [
-  'Dipirona 500 mg',
-  'Paracetamol 750 mg',
-  'Ibuprofeno 400 mg',
-  'Omeprazol 20 mg',
-  'Amoxicilina 500 mg',
-  'Azitromicina 500 mg',
-  'Loratadina 10 mg',
-  'Metformina 850 mg',
-  'Losartana 50 mg',
-  'Hidroclorotiazida 25 mg'
-] as const
-type Medicacao = (typeof MEDICACOES_DB)[number]
-
-// --------------------
-// Helpers
-// --------------------
 const debounce = (fn: (...a: any[]) => void, ms = 500) => {
   let t: any
   return (...args: any[]) => {
@@ -132,73 +31,130 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
   }
 }
 
-// --------------------
-// Página
-// --------------------
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
-  const params = useParams<{ idFila: string }>()
-  const search = useSearchParams()
-
-  const idFila = params?.idFila || ''
-  const pacienteId = search.get('pacienteId') || ''
-
-  // Estados base
   const [carregando, setCarregando] = useState(true)
-  const [dadosPaciente, setDadosPaciente] = useState<Paciente | null>(null)
-  const [triagem, setTriagem] = useState<Triagem | null>(null)
+  const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
+  const [evolucao, setEvolucao] = useState<string>("")
 
-  // Evolução
-  const [evolucao, setEvolucao] = useState('')
-
-  // CIDs
+  // CID
+  const [cids, setCids] = useState<Cid[]>([])
+  async function searchCids() {
+    try {
+      const dados = await getAllCids()
+      setCids(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
   const [cidQuery, setCidQuery] = useState('')
-  const [selectedCids, setSelectedCids] = useState<CIDItem[]>([])
+  const [selectedCids, setSelectedCids] = useState<Cid[]>([])  
   const filteredCids = useMemo(() => {
-    // TODO: substituir por busca no backend
     const q = cidQuery.trim().toLowerCase()
-    if (!q) return MOCK_CIDS.slice(0, 8)
-    return MOCK_CIDS.filter(
+    if (!q) return cids.slice(0, 8)
+    return cids.filter(
       c =>
-        c.code.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q)
+        c.nome.toLowerCase().includes(q) ||
+        c.descricao.toLowerCase().includes(q)
     ).slice(0, 20)
   }, [cidQuery])
-  const addCid = (cid: CIDItem) => {
-    if (selectedCids.find(c => c.code === cid.code)) return
+  const addCid = (id: Cid) => {
+    if (selectedCids.includes(id)) return
     if (selectedCids.length >= 5) {
       toast.warning('Você pode selecionar no máximo 5 CIDs.')
       return
     }
-    setSelectedCids(prev => [...prev, cid])
+    setSelectedCids(prev => [...prev, id])
     setDirty(true)
   }
-  const removeCid = (code: string) => {
-    setSelectedCids(prev => prev.filter(c => c.code !== code))
+  const removeCid = (id: Cid) => {
+    if (selectedCids.includes(id)) setSelectedCids(prev => prev.filter(c => c !== id))
     setDirty(true)
   }
 
-  // Procedimentos (agora com busca como o CID)
+  // MEDICAMENTOS
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
+  async function searchMedicamentos() {
+    try {
+      const dados = await getAllMedicamentos()
+      setMedicamentos(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+  const [medQuery, setMedQuery] = useState('')
+  const [selectedMeds, setSelectedMeds] = useState<Medicamento[]>([])
+  const filteredMeds = useMemo(() => {
+    const q = medQuery.trim().toLowerCase()
+    if (!q) return medicamentos.slice(0, 10)
+    return medicamentos.filter(m => m.nome.toLowerCase().includes(q)).slice(0, 20)
+  }, [medQuery])  
+  const addMed = (id: Medicamento) => {
+    if (selectedMeds.includes(id)) return
+    setSelectedMeds(prev => [...prev, id])
+    setDirty(true)
+  }
+  const removeMed = (id: Medicamento) => {
+    if (selectedMeds.includes(id)) setSelectedMeds(prev => prev.filter(c => c !== id))
+    setDirty(true)
+  }
+
+  // PROCEDIMENTOS
+  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([])
+  async function searchProcedimentos() {
+    try {
+      const dados = await getAllProcedimentos()
+      setProcedimentos(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
   const [procedQuery, setProcedQuery] = useState('')
-  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([
-    'Atendimento Médico'
-  ])
+  const [selectedProceds, setSelectedProceds] = useState<Procedimento[]>([])
   const filteredProced = useMemo(() => {
     // TODO: substituir por busca no backend
     const q = procedQuery.trim().toLowerCase()
-    if (!q) return PROCEDIMENTOS_DB.slice(0, 10)
-    return PROCEDIMENTOS_DB.filter(p => p.toLowerCase().includes(q)).slice(
+    if (!q) return procedimentos.slice(0, 10)
+    return procedimentos.filter(p => p.nome.toLowerCase().includes(q)).slice(
       0,
       20
     )
   }, [procedQuery])
-  const addProced = (p: Procedimento) => {
-    setProcedimentos(prev => (prev.includes(p) ? prev : [...prev, p]))
+  const addProced = (procedimento: Procedimento) => {
+    if (selectedProceds.includes(procedimento)) return
+    setSelectedProceds(prev => [...prev, procedimento])
     setDirty(true)
   }
-  const removeProced = (p: Procedimento) => {
-    setProcedimentos(prev => prev.filter(i => i !== p))
+  const removeProced = (procedimento: Procedimento) => {
+    if (selectedProceds.includes(procedimento)) setSelectedProceds(prev => prev.filter(c => c !== procedimento))
     setDirty(true)
+  }
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+    searchCids()
+    searchMedicamentos()
+    searchProcedimentos()
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    runSearch()
+  }, [atendimento, cids, medicamentos, procedimentos])
+
+  async function runSearch() {
+    // setCarregando(true)
+    // try {
+    //   const dados = await getAtendimentoById(16)
+    //   setAtendimento(dados)
+    // } catch (err) {
+    //   toast.error((err as Error).message)
+    // } finally {
+    //   setCarregando(false)
+    // }
+    setCarregando(false)
   }
 
   // Exames (checklist)
@@ -211,43 +167,20 @@ export default function AtendimentoConvencionalPage() {
     'Raio-X de tórax',
     'Eletrocardiograma (ECG)'
   ] as const
+
   type Exame = (typeof EXAMES_PRESETS)[number]
+
   const [exames, setExames] = useState<Record<Exame, boolean>>(() =>
     EXAMES_PRESETS.reduce(
       (acc, e) => ({ ...acc, [e]: false }),
       {} as Record<Exame, boolean>
     )
   )
+  
   const toggleExame = (e: Exame) => {
     setExames(prev => ({ ...prev, [e]: !prev[e] }))
     setDirty(true)
-  }
-
-  // Prescrição: busca + tags + "Outra medicação"
-  const [medQuery, setMedQuery] = useState('')
-  const [medicacoes, setMedicacoes] = useState<string[]>([])
-  const filteredMeds = useMemo(() => {
-    // TODO: substituir por busca no backend
-    const q = medQuery.trim().toLowerCase()
-    if (!q) return MEDICACOES_DB.slice(0, 10)
-    return MEDICACOES_DB.filter(m => m.toLowerCase().includes(q)).slice(0, 20)
-  }, [medQuery])
-  const addMedicacao = (m: string) => {
-    setMedicacoes(prev => (prev.includes(m) ? prev : [...prev, m]))
-    setMedQuery('')
-    setDirty(true)
-  }
-  const removeMedicacao = (m: string) => {
-    setMedicacoes(prev => prev.filter(x => x !== m))
-    setDirty(true)
-  }
-  const [medOutra, setMedOutra] = useState('')
-  const addOutraMedicacao = () => {
-    const v = medOutra.trim()
-    if (!v) return
-    addMedicacao(v)
-    setMedOutra('')
-  }
+  }  
 
   // Cronômetro
   const [elapsed, setElapsed] = useState(0)
@@ -261,7 +194,7 @@ export default function AtendimentoConvencionalPage() {
   )
 
   // Autosave
-  const lsKey = `att-medico:${idFila}:${pacienteId}`
+  const lsKey = `att-medico:${0}:${0}`
   const saveLocal = useMemo(
     () =>
       debounce((data: any) => {
@@ -271,74 +204,6 @@ export default function AtendimentoConvencionalPage() {
       }, 500),
     [lsKey]
   )
-  const loadLocal = () => {
-    try {
-      const raw = localStorage.getItem(lsKey)
-      if (!raw) return
-      const data = JSON.parse(raw)
-      setEvolucao(data.evolucao ?? '')
-      setSelectedCids(data.selectedCids ?? [])
-      setProcedimentos(data.procedimentos ?? ['Atendimento Médico'])
-      setExames(data.exames ?? exames)
-      setMedicacoes(data.medicacoes ?? [])
-    } catch {}
-  }
-
-  // Simulação de salvar na API
-  async function saveAtendimento(payload: any) {
-    // TODO: ligar com server action / chamada Supabase
-    await new Promise(r => setTimeout(r, 300))
-    return { ok: true }
-  }
-
-  // Efeitos
-  useEffect(() => {
-    let ativo = true
-    setCarregando(true)
-    Promise.all([
-      fetchPacienteById(pacienteId),
-      fetchTriagemAtual(pacienteId, idFila)
-    ])
-      .then(([pac, tri]) => {
-        if (!ativo) return
-        setDadosPaciente(pac)
-        setTriagem(tri)
-        loadLocal()
-      })
-      .finally(() => ativo && setCarregando(false))
-    return () => {
-      ativo = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pacienteId, idFila])
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    const data = {
-      evolucao,
-      selectedCids,
-      procedimentos,
-      exames,
-      medicacoes
-    }
-    saveLocal(data)
-  }, [evolucao, selectedCids, procedimentos, exames, medicacoes, saveLocal])
-
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (!dirty) return
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [dirty])
 
   // Ações
   const formatElapsed = (s: number) => {
@@ -348,57 +213,15 @@ export default function AtendimentoConvencionalPage() {
   }
 
   const handleImprimirReceita = () => {
-    // TODO: chamar serviço/rota que gera a receita via template (doc/PDF/print)
     toast.message('Imprimir Receita (conectar ao template)')
   }
 
   const handleFinalizar = async () => {
-    const examesSelecionados = Object.entries(exames)
-      .filter(([, v]) => v)
-      .map(([k]) => k)
-
-    const payload = {
-      idFila,
-      pacienteId,
-      evolucao: evolucao.trim(),
-      procedimentos,
-      cids: selectedCids, // [{code, description}]
-      exames: examesSelecionados,
-      prescricoes: medicacoes, // tags escolhidas + outras
-      iniciadoEm: Date.now() - elapsed * 1000,
-      duracaoSeg: elapsed
-    }
-
-    const vazio =
-      !payload.evolucao &&
-      procedimentos.length === 0 &&
-      selectedCids.length === 0 &&
-      examesSelecionados.length === 0 &&
-      medicacoes.length === 0
-
-    if (vazio) {
-      toast.warning(
-        'O atendimento está vazio. Adicione informações antes de finalizar.'
-      )
-      return
-    }
-
-    const res = await saveAtendimento(payload)
-    if (res?.ok) {
-      setDirty(false)
-      try {
-        localStorage.removeItem(lsKey)
-      } catch {}
-      toast.success('Atendimento finalizado!')
-      router.push('/atendimento')
-    } else {
-      toast.error('Não foi possível finalizar agora. Tente novamente.')
-    }
   }
 
   const handleCancelar = () => {
     toast.message('Atendimento cancelado.')
-    router.push('/atendimento')
+    // router.push('/atendimento')
   }
 
   if (carregando) {
@@ -448,13 +271,13 @@ export default function AtendimentoConvencionalPage() {
               <span className="text-sm text-muted-foreground">
                 Paciente:{' '}
                 <span className="font-medium">
-                  {dadosPaciente?.nome || '—'}
+                  {atendimento?.paciente.nome || '—'}
                 </span>{' '}
-                · PA: <span className="font-medium">{triagem?.pa || '—'}</span>
+                · PA: <span className="font-medium">{atendimento?.triagem?.pa || '—'}</span>
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Fila: <span className="font-medium">{idFila}</span> · Tempo:{' '}
+              Fila: <span className="font-medium">{atendimento?.fila?.nome}</span> · Tempo:{' '}
               <span className="font-semibold">{formatElapsed(elapsed)}</span>
             </div>
           </div>
@@ -467,7 +290,7 @@ export default function AtendimentoConvencionalPage() {
             <div className="text-right">
               <p className="text-xs text-muted-foreground">
                 ID Paciente:{' '}
-                <span className="font-medium">{dadosPaciente?.id}</span>
+                <span className="font-medium">{atendimento?.paciente?.id}</span>
               </p>
             </div>
           </CardHeader>
@@ -487,7 +310,7 @@ export default function AtendimentoConvencionalPage() {
                         <div className="col-span-2">
                           <Label>Nome</Label>
                           <Input
-                            value={dadosPaciente?.nome || ''}
+                            value={atendimento?.paciente?.nome || ''}
                             readOnly
                             disabled
                           />
@@ -495,7 +318,7 @@ export default function AtendimentoConvencionalPage() {
                         <div>
                           <Label>Data de Nascimento</Label>
                           <Input
-                            value={dadosPaciente?.dataNascimento || ''}
+                            value={atendimento?.paciente?.dataNascimento || ''}
                             readOnly
                             disabled
                           />
@@ -503,15 +326,7 @@ export default function AtendimentoConvencionalPage() {
                         <div>
                           <Label>CPF</Label>
                           <Input
-                            value={dadosPaciente?.cpf || ''}
-                            readOnly
-                            disabled
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Contato</Label>
-                          <Input
-                            value={dadosPaciente?.contato || ''}
+                            value={atendimento?.paciente?.cpf || ''}
                             readOnly
                             disabled
                           />
@@ -524,20 +339,12 @@ export default function AtendimentoConvencionalPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>PA</Label>
-                          <Input value={triagem?.pa || ''} readOnly disabled />
+                          <Input value={atendimento?.triagem?.pa || ''} readOnly disabled />
                         </div>
                         <div>
-                          <Label>Hipertensão</Label>
+                          <Label>Comorbidades</Label>
                           <Input
-                            value={triagem?.hipertensao || ''}
-                            readOnly
-                            disabled
-                          />
-                        </div>
-                        <div>
-                          <Label>Diabetes</Label>
-                          <Input
-                            value={triagem?.diabetes || ''}
+                            value={atendimento?.triagem?.comorbidades || ''}
                             readOnly
                             disabled
                           />
@@ -545,24 +352,24 @@ export default function AtendimentoConvencionalPage() {
                         <div>
                           <Label>Alergia</Label>
                           <Input
-                            value={triagem?.alergia || ''}
+                            value={atendimento?.triagem?.alergias || ''}
                             readOnly
                             disabled
                           />
                         </div>
 
                         <div className="col-span-2 flex flex-wrap gap-2 mt-2">
-                          {triagem?.hipertensao === 'sim' && (
+                          {/* {triagem?.hipertensao === 'sim' && (
                             <Badge className="bg-rose-600">Hipertenso</Badge>
+                          )} */}
+                          {atendimento?.triagem?.comorbidades !== '' && (
+                            <Badge className="bg-amber-600">Comorbidade</Badge>
                           )}
-                          {triagem?.diabetes === 'sim' && (
-                            <Badge className="bg-amber-600">Diabético</Badge>
-                          )}
-                          {triagem?.alergia === 'sim' && (
+                          {atendimento?.triagem?.alergias !== '' && (
                             <Badge className="bg-purple-600">Alergia</Badge>
                           )}
                           <Badge variant="secondary">
-                            PA: {triagem?.pa || '—'}
+                            PA: {atendimento?.triagem?.pa || '—'}
                           </Badge>
                         </div>
                       </div>
@@ -598,21 +405,21 @@ export default function AtendimentoConvencionalPage() {
                     )}
                     {filteredProced.map(p => (
                       <button
-                        key={p}
+                        key={p.id}
                         type="button"
                         onClick={() => addProced(p)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
                       >
-                        {p}
+                        {p.nome}
                       </button>
                     ))}
                   </div>
 
-                  {procedimentos.length > 0 && (
+                  {selectedProceds.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {procedimentos.map(p => (
-                        <Badge key={p} variant="secondary" className="gap-1">
-                          {p}
+                      {selectedProceds.map(p => (
+                        <Badge key={p.id} variant="secondary" className="gap-1">
+                          {p.nome}
                           <button
                             type="button"
                             onClick={() => removeProced(p)}
@@ -625,8 +432,6 @@ export default function AtendimentoConvencionalPage() {
                       ))}
                     </div>
                   )}
-
-                  {/* TODO: substituir filteredProced por resultados do backend */}
                 </div>
 
                 {/* CIDs (BUSCA + LISTA + TAGS) */}
@@ -651,15 +456,15 @@ export default function AtendimentoConvencionalPage() {
                     )}
                     {filteredCids.map(cid => (
                       <button
-                        key={cid.code}
+                        key={cid.id}
                         type="button"
                         onClick={() => addCid(cid)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
                       >
                         <span className="font-mono font-medium mr-2">
-                          {cid.code}
+                          {cid.nome}
                         </span>
-                        {cid.description}
+                        {cid.descricao}
                       </button>
                     ))}
                   </div>
@@ -668,17 +473,17 @@ export default function AtendimentoConvencionalPage() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       {selectedCids.map(cid => (
                         <Badge
-                          key={cid.code}
+                          key={cid.id}
                           variant="secondary"
                           className="gap-1"
                         >
-                          <span className="font-mono">{cid.code}</span> —{' '}
-                          {cid.description}
+                          <span className="font-mono">{cid.nome}</span> —{' '}
+                          {cid.descricao}
                           <button
                             type="button"
-                            onClick={() => removeCid(cid.code)}
+                            onClick={() => removeCid(cid)}
                             className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
-                            aria-label={`Remover ${cid.code}`}
+                            aria-label={`Remover ${cid.id}`}
                           >
                             ×
                           </button>
@@ -735,27 +540,27 @@ export default function AtendimentoConvencionalPage() {
                     )}
                     {filteredMeds.map(m => (
                       <button
-                        key={m}
+                        key={m.id}
                         type="button"
-                        onClick={() => addMedicacao(m)}
+                        onClick={() => addMed(m)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
                       >
-                        {m}
+                        {m.nome}
                       </button>
                     ))}
                   </div>
 
                   {/* Tags de medicações escolhidas */}
-                  {medicacoes.length > 0 && (
+                  {selectedMeds.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {medicacoes.map(m => (
-                        <Badge key={m} variant="secondary" className="gap-1">
-                          {m}
+                      {selectedMeds.map(m => (
+                        <Badge key={m.id} variant="secondary" className="gap-1">
+                          {m.nome}
                           <button
                             type="button"
-                            onClick={() => removeMedicacao(m)}
+                            onClick={() => removeMed(m)}
                             className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
-                            aria-label={`Remover ${m}`}
+                            aria-label={`Remover ${m.id}`}
                           >
                             ×
                           </button>
@@ -763,23 +568,6 @@ export default function AtendimentoConvencionalPage() {
                       ))}
                     </div>
                   )}
-
-                  {/* Outra medicação */}
-                  <div className="mt-4">
-                    <Label className="mb-2 block">Outra medicação</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Ex: Nimesulida 100 mg 12/12h por 3 dias"
-                        value={medOutra}
-                        onChange={e => setMedOutra(e.target.value)}
-                      />
-                      <Button type="button" onClick={addOutraMedicacao}>
-                        Adicionar
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* TODO: trocar filteredMeds por resultados do backend */}
                 </div>
 
                 {/* Exames */}

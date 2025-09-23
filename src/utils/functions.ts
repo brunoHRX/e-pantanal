@@ -72,7 +72,7 @@ export function badgeClass(status: BadgeStatus): string {
         case 'expired':
             return 'bg-zinc-100 text-zinc-500 border-zinc-200 opacity-70'
         case 'atendendo':
-            return 'border border-green-800 text-green-800 bg-green-100 h-4 px-2'
+            return 'border border-green-800 text-green-800 bg-green-100'
         case 'pending':
         default:
             return 'border border-zinc-500 text-zinc-700 bg-transparent'

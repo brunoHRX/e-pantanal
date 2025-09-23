@@ -50,4 +50,14 @@ export async function iniciarAtendimento(atendimento: number): Promise<void> {
     }
 }
 
+export async function getAtendimentoById(id: number): Promise<AtendimentoFluxo> {
+    const res = await fetch(`${API_BASE}/api/${caminho}/${id}`, { headers: headers() });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Erro ${res.status} ao buscar ${elemento_plural}: ${msg}`);
+    }
+    const list: AtendimentoFluxo = await res.json();
+    return list;
+}
+
 export type { Especialidade, AtendimentoFluxo, AtendimentoFilas, FilasFluxo }

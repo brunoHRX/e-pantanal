@@ -225,7 +225,7 @@ export default function TriagemPage() {
 
             {/* Especialidades (múltiplas) */}
             <div>
-              <Label>Especialidade(s) solicitada(s)</Label>
+              <Label>Áreas de atendimento</Label>
               <div className="mt-2 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <select
