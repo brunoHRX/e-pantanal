@@ -11,9 +11,11 @@ export interface LoginResponse {
     id: number;
     usuario: string;
     email: string;
+    tipo_atendimento: string;
     especialidade_id: number;
     email_verificacao: string | null;
     ativo: boolean;
+    filas: number[];
   };
 }
 

@@ -49,5 +49,13 @@ export async function deleteElement(id: number): Promise<void> {
       throw new Error(`Erro ${res.status} ao atualizar ${elemento_singular}: ${msg}`);
     }
 }
+  
+export async function updateAtendimento(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/api/${caminho}/atendimento/${id}`, { method: "GET", headers: headers() });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(`Erro ${res.status} ao atualizar ${elemento_singular}: ${msg}`);
+    }
+}
 
 export type { Usuario }

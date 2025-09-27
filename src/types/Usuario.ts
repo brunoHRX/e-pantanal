@@ -7,6 +7,8 @@ export type Usuario = {
     registro?: string,
     uf?: string,
     sigla?: string,
+    ativo?: boolean,
+    tipo_atendimento?: string,
     especialidade_id?: number,
     especialidade: Especialidade
 }

@@ -42,7 +42,8 @@ import {
   getElementById as getUsuarioById,
   createElement as createUsuario,
   updateElement as updateUsuario,
-  deleteElement as deleteUsuario
+  deleteElement as deleteUsuario,
+  updateAtendimento
 } from '@/services/usuariosService'
 import { Especialidade, getAll as getAllEspecialidades } from '@/services/especialidadeService'
 
@@ -72,6 +73,7 @@ export default function PageUsuarios() {
       especialidade_id: 0,
       usuario: '',
       registro: '',
+      tipo_atendimento: '',
       uf: '',
       sigla: '',
       email: ''
@@ -173,6 +175,7 @@ export default function PageUsuarios() {
         usuario: response.usuario,
         email: response.email,
         registro: response.registro,
+        tipo_atendimento: response.tipo_atendimento,
         sigla: response.sigla,
         uf: response.uf,
         especialidade_id: response.especialidade_id
@@ -207,16 +210,59 @@ export default function PageUsuarios() {
     }
   }
 
+  async function handleAtendimento(id: number) {
+    try {
+      await updateAtendimento(id)
+    } catch (err) {
+      toast.error(`Erro ao atualizar`)
+    } finally {
+      await handleSearchClick()
+      toast.success(`Atualizado`)
+    }
+  }
+
   const colunas = useMemo<ColumnDef<Usuario>[]>(
     () => [
       { accessorKey: 'id', header: 'ID' },
       { accessorKey: 'usuario', header: 'Usuário' },
       { accessorKey: 'email', header: 'Email' },
+      { accessorKey: 'tipo_atendimento', header: 'Atendimento', accessorFn: (row) => {
+        switch (row.tipo_atendimento) {
+          case "medico":
+            return "Médico";
+          case "odontologico":
+            return "Odontológico";
+          case "pediatrico":
+            return "Pediátrico";
+          case "triagem":
+            return "Triagem";
+          case "atendimento":
+            return "Atendimento";
+          case "gerenciamento":
+            return "Gerenciamento";
+          default:
+            return "";
+        }
+      }},
       { accessorKey: 'especialidade', header: 'Especialidade', accessorFn: (row) => row.especialidade?.nome },
       { 
         id: 'registroProfissional', 
         header: 'Registro prof.', 
         accessorFn: (row) => row.registro ? row.sigla?.toUpperCase() + "/" + row.uf?.toUpperCase() + " - " + row.registro : ""
+      },
+      { 
+        accessorKey: 'ativo', 
+        header: 'Atendendo', 
+        cell: ({ row }) => {
+          const isChecked = row.original.ativo      
+          return (
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => handleAtendimento(row.original.id)}
+            />
+          )
+        },
       },
       {
         id: 'actions',
@@ -368,6 +414,36 @@ export default function PageUsuarios() {
                     <FormLabel>Registro</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tipo_atendimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de atendimento</FormLabel>
+                    <FormControl>
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background
+                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={field.value ?? ''}
+                        onChange={e =>
+                          field.onChange(
+                            e.target.value ? e.target.value : ""
+                          )
+                        }
+                      >
+                        <option value={0}>Selecione…</option>
+                        <option key={1} value={'medico'}>{'Médico'}</option>
+                        <option key={2} value={'odontologico'}>{'Odontológico'}</option>
+                        <option key={3} value={'pediatrico'}>{'Pediátrico'}</option>
+                        <option key={4} value={'triagem'}>{'Triagem'}</option>
+                        <option key={5} value={'atendimento'}>{'Atendimento'}</option>
+                        <option key={6} value={'gerenciamento'}>{'Gerenciamento'}</option>
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
