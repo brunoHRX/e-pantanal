@@ -85,8 +85,10 @@ export function computeFilaStatus(
   ): BadgeStatus {
     var response: BadgeStatus = 'pending'
     if (at.fila_id == f?.fila_id) {
-        response = 'active' 
-        if (at.consultorio?.especialidade_id == f.fila.especialidade_id) response = 'atendendo'
+        response = 'active'                 
+    }
+    if (at.usuario_id != null) {
+        if (at.usuario?.filas?.includes(f.fila_id)) response = 'atendendo'
     }
     if (f?.atendido == 1) response = 'expired'
     return response

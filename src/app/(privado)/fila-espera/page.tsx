@@ -53,6 +53,7 @@ import { toast } from 'sonner'
 
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 import { QueueLegend } from '@/components/QueueLegend'
+import { stat } from 'fs'
 
 export default function FilaEsperaPage() {
   const [query, setQuery] = useState('')
@@ -107,7 +108,7 @@ export default function FilaEsperaPage() {
         const matchEspecialidade = filtroEspecialidades.length === 0 || (Array.isArray(atendimento.filas) && atendimento.filas.some(f => f?.fila?.especialidade_id != null && filtroEspecialidades.includes(f.fila.especialidade_id)))
         const pacienteSexo = (atendimento.paciente?.sexo ?? '').toLowerCase()
         const matchSexo = filtroSexo.length === 0 || filtroSexo.map(s => s.toLowerCase()).includes(pacienteSexo)
-        const estadoAtual = atendimento.consultorio_id && atendimento.consultorio_id > 0 ? 'em atendimento' : 'aguardando'
+        const estadoAtual = atendimento.usuario_id && atendimento.usuario_id > 0 ? 'em atendimento' : 'aguardando'
         const matchEstado = filtroEstado.length === 0 || filtroEstado.map(e => e.toLowerCase()).includes(estadoAtual)
         // console.log('Paciente:', atendimento.paciente?.nome, 'Query:', matchQuery, 'Especialidade:', matchEspecialidade, 'Sexo:', matchSexo, 'Estado:', matchEstado);
         return matchQuery && matchEspecialidade && matchSexo && matchEstado
@@ -332,58 +333,7 @@ export default function FilaEsperaPage() {
                       <TooltipContent>Visualizar Triagem</TooltipContent>
                     </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Encaminhar para atendimento"
-                        >
-                          <DropdownMenu>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    aria-label="Encaminhar para atendimento"
-                                  >
-                                    <Send className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Encaminhar para Atendimento
-                              </TooltipContent>
-                            </Tooltip>
-
-                            <DropdownMenuContent
-                              align="end"
-                              className="min-w-56"
-                            >
-                              {p.filas?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id).length ? (
-                                p.filas
-                                  ?.filter(f => f.atendido == 0 && p.fila_id != f.fila.id)
-                                  .map(f => (
-                                    <DropdownMenuItem key={f.id} onClick={() => onEncaminhar(p.id,f.fila.id)}>
-                                      {f.fila.especialidade.nome}
-                                    </DropdownMenuItem>
-                                  ))
-                              ) : (
-                                <DropdownMenuItem disabled>
-                                  Nenhuma especialidade pendente
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Encaminhar para Atendimento
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
+                    {/* <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           size="icon"
@@ -402,7 +352,7 @@ export default function FilaEsperaPage() {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Remover da Fila</TooltipContent>
-                    </Tooltip>
+                    </Tooltip> */}
                   </div>
 
                   {/* Mobile: menu 3 pontinhos */}

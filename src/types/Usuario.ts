@@ -11,4 +11,5 @@ export type Usuario = {
     tipo_atendimento?: string,
     especialidade_id?: number,
     especialidade: Especialidade
+    filas?: number[],
 }

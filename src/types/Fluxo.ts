@@ -1,5 +1,4 @@
 import { Cid } from "./Cid";
-import { Consultorio } from "./Consultorio";
 import { Fila } from "./Fila";
 import { Patient } from "./Patient";
 import { Usuario } from "./Usuario";
@@ -11,8 +10,8 @@ export type AtendimentoFluxo = {
     status: string,
     fila_id?: number,
     fila?: Fila,
-    consultorio_id?: number,
-    consultorio?: Consultorio,
+    usuario_id?: number,
+    usuario?: Usuario,
     entrada: string,
     saida?: string,
     observacao?: string,

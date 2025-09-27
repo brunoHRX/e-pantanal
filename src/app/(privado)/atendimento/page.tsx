@@ -30,9 +30,10 @@ import {
   Search,
   Eye
 } from 'lucide-react'
-import { ageFromISO, prioridadeColor, prioridadeDesc, safeDateTimeLabel, stripDiacritics, waitingTime } from '@/utils/functions'
+import { ageFromISO, badgeClass, computeFilaStatus, prioridadeColor, prioridadeDesc, safeDateTimeLabel, stripDiacritics, waitingTime } from '@/utils/functions'
 import { AtendimentoFluxo, getAll, iniciarAtendimento } from '@/services/fluxoService'
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
+import { QueueLegend } from '@/components/QueueLegend'
 
 // =====================
 // Página
@@ -40,7 +41,7 @@ import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 export default function FilaDeAtendimentoPage() {
   const router = useRouter()
   const [userName, setUserName] = useState<string>("");
-  const [userEspecialidade, setEspecialidade] = useState<number>()
+  const [userFilas, setUserFilas] = useState<number[]>([]);
   const [results, setResults] = useState<AtendimentoFluxo[]>([])
   const [filtroPrioridade, setFiltroPrioridade] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -59,14 +60,14 @@ export default function FilaDeAtendimentoPage() {
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
       const user = JSON.parse(storedUser);
-      setEspecialidade(user.especialidade_id);
-      setUserName(user.usuario.toUpperCase());
+      setUserName(user.usuario);
+      setUserFilas(user.filas);
     }
   }, []);
 
   useEffect(() => {   
-    if (userEspecialidade) runSearch()
-  }, [query, filtroPrioridade, userEspecialidade, userName])
+    if (userFilas) runSearch()
+  }, [query, filtroPrioridade, userFilas, userName])
 
   async function runSearch() {
     setLoading(true)
@@ -75,15 +76,25 @@ export default function FilaDeAtendimentoPage() {
       const qNorm = stripDiacritics(q)
       const dados = (await getAll()).sort((a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime())
       const filtrados = dados.filter(atendimento => {
+        console.log("atendimento => " + atendimento.id);
         const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase())
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
-        const matchEspecialidade = userEspecialidade == undefined || atendimento.fila?.especialidade_id === userEspecialidade
+
+        var matchFilas = false;
+        if (atendimento.filas) 
+        {
+          atendimento.filas.forEach(fila => {
+            if (userFilas.includes(fila.fila.id)) matchFilas = true;
+          });
+        }
+
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
-        var emptyConsultorio = atendimento.consultorio == null ? true : false
-        // emptyConsultorio = true
+
+        const emAtendimento = atendimento.usuario ? true : false;
+
         const matchPrioridade = filtroPrioridade.length === 0 || filtroPrioridade.map(s => s.toLowerCase()).includes(pacientePrioridade)
-        return matchQuery && matchPrioridade && matchEspecialidade && emptyConsultorio
-        // return true
+        
+        return matchQuery && matchPrioridade && matchFilas && !emAtendimento
       })
       setResults(filtrados)
     } catch (err) {
@@ -116,7 +127,7 @@ export default function FilaDeAtendimentoPage() {
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold">
-            Fila de Espera — {userName}
+            Atendimento — {userName}
           </CardTitle>
 
           {/* headerRight: filtros */}
@@ -186,6 +197,9 @@ export default function FilaDeAtendimentoPage() {
             Buscar
           </Button>
         </CardContent>
+        <CardContent className="flex flex-col gap-2 md:flex-row">
+          <QueueLegend />
+        </CardContent>
       </Card>
 
       {/* Lista */}
@@ -224,6 +238,14 @@ export default function FilaDeAtendimentoPage() {
                           {p.triagem && (<Badge className={`${prioridadeColor(p.triagem.prioridade)}`}>
                             {prioridadeDesc(p.triagem.prioridade)}
                           </Badge>)}
+                          
+                          <div className="flex flex-wrap gap-2">
+                            {p.filas?.map((f, i) => {
+                              const status = computeFilaStatus(p, f)
+                              const name = f?.fila?.especialidade?.nome ?? 'Especialidade'
+                              return (<Badge key={i} className={`whitespace-nowrap ${badgeClass(status)}`}>{name}</Badge>)
+                            })}
+                          </div>
                         </div>
                       </div>
 
