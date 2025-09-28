@@ -19,9 +19,13 @@ import {
 } from '@/components/ui/accordion'
 import { Cid, getAll as getAllCids} from '@/services/cidsService'
 import { Medicamento, getAll as getAllMedicamentos } from '@/services/medicamentoService'
+import { Exame, getAll as getAllExames } from '@/services/examesService'
 import { Procedimento, getAll as getAllProcedimentos } from '@/services/procedimentoService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
+import { safeDateLabel } from '@/utils/functions'
+import { Atendimento } from '@/types/Atendimento'
+import { finalizarAtendimento } from '@/services/atendimentoService'
 
 const debounce = (fn: (...a: any[]) => void, ms = 500) => {
   let t: any
@@ -112,7 +116,6 @@ export default function AtendimentoConvencionalPage() {
   const [procedQuery, setProcedQuery] = useState('')
   const [selectedProceds, setSelectedProceds] = useState<Procedimento[]>([])
   const filteredProced = useMemo(() => {
-    // TODO: substituir por busca no backend
     const q = procedQuery.trim().toLowerCase()
     if (!q) return procedimentos.slice(0, 10)
     return procedimentos.filter(p => p.nome.toLowerCase().includes(q)).slice(
@@ -130,11 +133,34 @@ export default function AtendimentoConvencionalPage() {
     setDirty(true)
   }
 
+  //EXAMES
+  const [exames, setExames] = useState<Exame[]>([])
+  async function searchExames() {
+    try {
+      const dados = await getAllExames()
+      setExames(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+  const [selectedExames, setSelectedExames] = useState<Exame[]>([])
+  const toggleExame = (exame: Exame) => {
+    if (selectedExames.includes(exame)) 
+    {
+      setSelectedExames(prev => prev.filter(c => c !== exame))
+    } else 
+    {
+      setSelectedExames(prev => [...prev, exame])
+    }
+    setDirty(true)
+  }  
+
   useEffect(() => {
     timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
     searchCids()
     searchMedicamentos()
     searchProcedimentos()
+    searchExames()
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
@@ -142,45 +168,24 @@ export default function AtendimentoConvencionalPage() {
 
   useEffect(() => {
     runSearch()
-  }, [atendimento, cids, medicamentos, procedimentos])
+  }, []) 
+
+  useEffect(() => {
+    runSearch()
+  }, [cids, medicamentos, procedimentos, exames])
 
   async function runSearch() {
-    // setCarregando(true)
-    // try {
-    //   const dados = await getAtendimentoById(16)
-    //   setAtendimento(dados)
-    // } catch (err) {
-    //   toast.error((err as Error).message)
-    // } finally {
-    //   setCarregando(false)
-    // }
+    setCarregando(true)
+    try {
+      const dados = await getAtendimentoById(21)
+      setAtendimento(dados)
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setCarregando(false)
+    }
     setCarregando(false)
   }
-
-  // Exames (checklist)
-  const EXAMES_PRESETS = [
-    'Hemograma completo',
-    'Glicemia em jejum',
-    'Perfil lipídico',
-    'Urina tipo 1',
-    'PCR (Proteína C-reativa)',
-    'Raio-X de tórax',
-    'Eletrocardiograma (ECG)'
-  ] as const
-
-  type Exame = (typeof EXAMES_PRESETS)[number]
-
-  const [exames, setExames] = useState<Record<Exame, boolean>>(() =>
-    EXAMES_PRESETS.reduce(
-      (acc, e) => ({ ...acc, [e]: false }),
-      {} as Record<Exame, boolean>
-    )
-  )
-  
-  const toggleExame = (e: Exame) => {
-    setExames(prev => ({ ...prev, [e]: !prev[e] }))
-    setDirty(true)
-  }  
 
   // Cronômetro
   const [elapsed, setElapsed] = useState(0)
@@ -217,11 +222,40 @@ export default function AtendimentoConvencionalPage() {
   }
 
   const handleFinalizar = async () => {
+    if (atendimento) {
+      const atendimentoRealizado: Atendimento = {
+        id: atendimento.id,
+        evolucao: evolucao,
+        procedimentos: selectedProceds.map(p => p.id),
+        cids: selectedCids.map(p => p.id),
+        medicamentos: selectedMeds.map(p => p.id),
+        exames: selectedExames.map(p => p.id),
+      }
+
+      try {
+        await finalizarAtendimento(atendimentoRealizado);
+        toast.success("Atendimento realizado!")
+        // router.push('/atendimento')
+      } catch {
+        toast.error("Finalização do atendimento falhou!")
+      } finally {        
+        setCarregando(false)
+      }
+    }
+    console.log("procedimentos");
+    console.log(selectedProceds);
+    console.log("cids");
+    console.log(selectedCids);
+    console.log("medicacoes");
+    console.log(selectedMeds);
+    console.log("exames");    
+    console.log(selectedExames);    
+    console.log("evolucao" + evolucao);
   }
 
   const handleCancelar = () => {
     toast.message('Atendimento cancelado.')
-    // router.push('/atendimento')
+    router.push('/atendimento')
   }
 
   if (carregando) {
@@ -318,7 +352,7 @@ export default function AtendimentoConvencionalPage() {
                         <div>
                           <Label>Data de Nascimento</Label>
                           <Input
-                            value={atendimento?.paciente?.dataNascimento || ''}
+                            value={safeDateLabel(atendimento?.paciente?.dataNascimento) || ''}
                             readOnly
                             disabled
                           />
@@ -574,16 +608,16 @@ export default function AtendimentoConvencionalPage() {
                 <div>
                   <Label className="mb-2 block">Solicitar Exames</Label>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    {EXAMES_PRESETS.map(ex => (
+                    {exames.map(ex => (
                       <label
-                        key={ex}
+                        key={ex.id}
                         className="inline-flex items-center gap-2 text-sm"
                       >
                         <Checkbox
-                          checked={exames[ex]}
+                          checked={selectedExames.includes(ex)}
                           onCheckedChange={() => toggleExame(ex)}
                         />
-                        <span>{ex}</span>
+                        <span>{ex.nome}</span>
                       </label>
                     ))}
                   </div>

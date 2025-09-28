@@ -26,6 +26,9 @@ const FilasTab = dynamic(() => import('./tabs/FilasTab'), {
 const ConsultoriosTab = dynamic(() => import('./tabs/ConsultoriosTab'), {
   ssr: false
 })
+const ExamesTab = dynamic(() => import('./tabs/ExamesTab'), {
+  ssr: false
+})
 const MedicamentosTab = dynamic(() => import('./tabs/MedicamentosTab'), {
   ssr: false
 })
@@ -37,7 +40,7 @@ const tabs = [
   { id: 'procedimentos', label: 'Procedimentos' },
   { id: 'especialidades', label: 'Especialidades' },
   { id: 'filas', label: 'Filas' },
-  { id: 'consultorios', label: 'Consultórios' },
+  { id: 'exames', label: 'Exames' },
   { id: 'medicamentos', label: 'Medicamentos' },
   { id: 'usuarios', label: 'Usuários' },
 ]
@@ -64,6 +67,8 @@ export default function ConfiguracoesPage() {
         return FilasTab
       case 'consultorios':
         return ConsultoriosTab
+      case 'exames':
+        return ExamesTab
       case 'medicamentos':
         return MedicamentosTab
       case 'usuarios':

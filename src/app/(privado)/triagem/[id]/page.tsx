@@ -101,7 +101,8 @@ export default function TriagemPage() {
 
   async function handleLoadEspecialidades() {    
     const resEspecialidades = await getAll();
-    setallEspecialidades(resEspecialidades);
+    const filteredEsp = resEspecialidades.filter(e => e.id !=  3 && e.id !=  8)
+    setallEspecialidades(filteredEsp);
   }
 
   useEffect(() => {
