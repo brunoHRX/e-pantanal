@@ -177,7 +177,7 @@ export default function AtendimentoConvencionalPage() {
   async function runSearch() {
     setCarregando(true)
     try {
-      const dados = await getAtendimentoById(21)
+      const dados = await getAtendimentoById(22)
       setAtendimento(dados)
     } catch (err) {
       toast.error((err as Error).message)
@@ -235,22 +235,13 @@ export default function AtendimentoConvencionalPage() {
       try {
         await finalizarAtendimento(atendimentoRealizado);
         toast.success("Atendimento realizado!")
-        // router.push('/atendimento')
+        router.push('/atendimento')
       } catch {
         toast.error("Finalização do atendimento falhou!")
       } finally {        
         setCarregando(false)
       }
     }
-    console.log("procedimentos");
-    console.log(selectedProceds);
-    console.log("cids");
-    console.log(selectedCids);
-    console.log("medicacoes");
-    console.log(selectedMeds);
-    console.log("exames");    
-    console.log(selectedExames);    
-    console.log("evolucao" + evolucao);
   }
 
   const handleCancelar = () => {
