@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,25 +10,51 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { ArrowLeft, Printer, CheckCircle2, XCircle } from 'lucide-react'
+import {
+  ArrowLeft,
+  Printer,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Send
+} from 'lucide-react'
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
-import { Cid, getAll as getAllCids} from '@/services/cidsService'
-import { Medicamento, getAll as getAllMedicamentos } from '@/services/medicamentoService'
+
+import { Cid, getAll as getAllCids } from '@/services/cidsService'
+import {
+  Medicamento,
+  getAll as getAllMedicamentos
+} from '@/services/medicamentoService'
 import { Exame, getAll as getAllExames } from '@/services/examesService'
-import { Procedimento, getAll as getAllProcedimentos } from '@/services/procedimentoService'
+import {
+  Procedimento,
+  getAll as getAllProcedimentos
+} from '@/services/procedimentoService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
 import { safeDateLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
 import { finalizarAtendimento } from '@/services/atendimentoService'
+
 import Odontograma from '../componentes/Odontograma'
 import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
+// NOVO: componente de prescrição
+import PrescricaoEditor, {
+  PrescricaoItem
+} from '../componentes/PrescricaoEditor'
+
+import EncaminharModal, { Especialidade } from '@/components/EncaminharModal'
+
+// --------------------
+// Utils
+// --------------------
 const debounce = (fn: (...a: any[]) => void, ms = 500) => {
   let t: any
   return (...args: any[]) => {
@@ -39,187 +65,222 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
+
+  // --------------------
+  // Estados principais
+  // --------------------
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
-  const [evolucao, setEvolucao] = useState<string>("")
+  const [evolucao, setEvolucao] = useState<string>('')
+
+  // mostrar/ocultar odontograma (quando procedimento id === 4)
   const [odontogramaOpen, setOdontogramaOpen] = useState<boolean>(false)
 
-  // CID
+  // --------------------
+  // Listas (Services)
+  // --------------------
+  // CIDs
   const [cids, setCids] = useState<Cid[]>([])
-  async function searchCids() {
-    try {
-      const dados = await getAllCids()
-      setCids(dados)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
   const [cidQuery, setCidQuery] = useState('')
-  const [selectedCids, setSelectedCids] = useState<Cid[]>([])  
+  const [selectedCids, setSelectedCids] = useState<Cid[]>([])
   const filteredCids = useMemo(() => {
     const q = cidQuery.trim().toLowerCase()
-    if (!q) return cids.slice(0, 8)
-    return cids.filter(
-      c =>
-        c.nome.toLowerCase().includes(q) ||
-        c.descricao.toLowerCase().includes(q)
-    ).slice(0, 20)
-  }, [cidQuery])
-  const addCid = (id: Cid) => {
-    if (selectedCids.includes(id)) return
+    const base = cids ?? []
+    if (!q) return base.slice(0, 8)
+    return base
+      .filter(
+        c =>
+          c.nome.toLowerCase().includes(q) ||
+          c.descricao.toLowerCase().includes(q)
+      )
+      .slice(0, 20)
+  }, [cidQuery, cids])
+
+  const addCid = (cid: Cid) => {
+    if (selectedCids.some(c => c.id === cid.id)) return
     if (selectedCids.length >= 5) {
       toast.warning('Você pode selecionar no máximo 5 CIDs.')
       return
     }
-    setSelectedCids(prev => [...prev, id])
+    setSelectedCids(prev => [...prev, cid])
     setDirty(true)
   }
-  const removeCid = (id: Cid) => {
-    if (selectedCids.includes(id)) setSelectedCids(prev => prev.filter(c => c !== id))
+  const removeCid = (cid: Cid) => {
+    if (!selectedCids.some(c => c.id === cid.id)) return
+    setSelectedCids(prev => prev.filter(c => c.id !== cid.id))
     setDirty(true)
   }
 
-  // MEDICAMENTOS
+  // Medicamentos (somente lista para o componente de prescrição)
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
-  async function searchMedicamentos() {
-    try {
-      const dados = await getAllMedicamentos()
-      setMedicamentos(dados)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
-  const [medQuery, setMedQuery] = useState('')
-  const [selectedMeds, setSelectedMeds] = useState<Medicamento[]>([])
-  const filteredMeds = useMemo(() => {
-    const q = medQuery.trim().toLowerCase()
-    if (!q) return medicamentos.slice(0, 10)
-    return medicamentos.filter(m => m.nome.toLowerCase().includes(q)).slice(0, 20)
-  }, [medQuery])  
-  const addMed = (id: Medicamento) => {
-    if (selectedMeds.includes(id)) return
-    setSelectedMeds(prev => [...prev, id])
-    setDirty(true)
-  }
-  const removeMed = (id: Medicamento) => {
-    if (selectedMeds.includes(id)) setSelectedMeds(prev => prev.filter(c => c !== id))
-    setDirty(true)
-  }
 
-  // PROCEDIMENTOS
+  // Procedimentos
   const [procedimentos, setProcedimentos] = useState<Procedimento[]>([])
-  async function searchProcedimentos() {
-    try {
-      const dados = await getAllProcedimentos()
-      setProcedimentos(dados)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
   const [procedQuery, setProcedQuery] = useState('')
   const [selectedProceds, setSelectedProceds] = useState<Procedimento[]>([])
   const filteredProced = useMemo(() => {
     const q = procedQuery.trim().toLowerCase()
-    if (!q) return procedimentos.slice(0, 10)
-    return procedimentos.filter(p => p.nome.toLowerCase().includes(q)).slice(
-      0,
-      20
-    )
-  }, [procedQuery])
+    const base = procedimentos ?? []
+    if (!q) return base.slice(0, 10)
+    return base.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 20)
+  }, [procedQuery, procedimentos])
+
   const addProced = (procedimento: Procedimento) => {
-    if (selectedProceds.includes(procedimento)) return
-    setSelectedProceds(prev => [...prev, procedimento])
-    if (selectedProceds.some(p => p.id === 4) || procedimento.id === 4) {
-      console.log('true');
-      
+    if (selectedProceds.some(p => p.id === procedimento.id)) return
+    const next = [...selectedProceds, procedimento]
+    setSelectedProceds(next)
+
+    // mantém regra de abrir odontograma se procedimento id === 4
+    if (next.some(p => p.id === 4) || procedimento.id === 4) {
       setOdontogramaOpen(true)
     } else {
       setOdontogramaOpen(false)
-    };
+    }
     setDirty(true)
   }
   const removeProced = (procedimento: Procedimento) => {
-    if (selectedProceds.includes(procedimento)) setSelectedProceds(prev => prev.filter(c => c !== procedimento))
-    if (procedimento.id === 4) setOdontogramaOpen(false)
+    if (!selectedProceds.some(p => p.id === procedimento.id)) return
+    const next = selectedProceds.filter(p => p.id !== procedimento.id)
+    setSelectedProceds(next)
+    if (procedimento.id === 4 || !next.some(p => p.id === 4)) {
+      setOdontogramaOpen(false)
+    }
     setDirty(true)
   }
 
-  //EXAMES
+  // Encaminhar
+  const [encOpen, setEncOpen] = useState(false)
+  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
+
+  useEffect(() => {
+    // TODO: trocar pelo service real
+    setEspecialidades([
+      { id: 1, nome: 'Cardiologia' },
+      { id: 2, nome: 'Ortopedia' },
+      { id: 3, nome: 'Dermatologia' }
+    ])
+  }, [])
+
+  // Exames
   const [exames, setExames] = useState<Exame[]>([])
-  async function searchExames() {
-    try {
-      const dados = await getAllExames()
-      setExames(dados)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
   const [selectedExames, setSelectedExames] = useState<Exame[]>([])
   const toggleExame = (exame: Exame) => {
-    if (selectedExames.includes(exame)) 
-    {
-      setSelectedExames(prev => prev.filter(c => c !== exame))
-    } else 
-    {
+    if (selectedExames.some(e => e.id === exame.id)) {
+      setSelectedExames(prev => prev.filter(e => e.id !== exame.id))
+    } else {
       setSelectedExames(prev => [...prev, exame])
     }
     setDirty(true)
-  }  
+  }
 
-  //ODONTOGRAMA
+  // --------------------
+  // Prescrição (componente)
+  // --------------------
+  const [prescricoes, setPrescricoes] = useState<PrescricaoItem[]>([])
+
+  // --------------------
+  // Odontograma
+  // --------------------
   const [odontoSelections, setOdontoSelections] = useState<ToothSelectionsMap>(
     {}
   )
-  
   const selectionsArray = Object.values(odontoSelections).filter(
     s => (s.procedures?.length || 0) > 0
   )
 
-  useEffect(() => {
-    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
-    searchCids()
-    searchMedicamentos()
-    searchProcedimentos()
-    searchExames()
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    runSearch()
-  }, []) 
-
-  useEffect(() => {
-    runSearch()
-  }, [cids, medicamentos, procedimentos, exames])
-
-  async function runSearch() {
-    setCarregando(true)
-    try {
-      const dados = await getAtendimentoById(22)
-      setAtendimento(dados)
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setCarregando(false)
-    }
-    setCarregando(false)
-  }
-
-  // Cronômetro
+  // --------------------
+  // Cronômetro / atalhos / navegação segura
+  // --------------------
   const [elapsed, setElapsed] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Dirty / navegação segura
   const [dirty, setDirty] = useState(false)
   const setDirtyDebounced = useMemo(
     () => debounce(() => setDirty(true), 300),
     []
   )
 
+  useEffect(() => {
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+
+    // atalhos: Ctrl/Cmd+S (finalizar) e Esc (cancelar)
+    const onKey = (e: KeyboardEvent) => {
+      const isSave = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'
+      if (isSave) {
+        e.preventDefault()
+        void handleFinalizar()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancelar()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      window.removeEventListener('keydown', onKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // bloquear saída se houver alterações
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!dirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+
+  // --------------------
+  // Carregamento inicial
+  // --------------------
+  useEffect(() => {
+    setCarregando(true)
+    ;(async () => {
+      try {
+        // Ajuste aqui para o ID correto do atendimento
+        const dados = await getAtendimentoById(22)
+        setAtendimento(dados)
+      } catch (err) {
+        toast.error((err as Error).message)
+      } finally {
+        setCarregando(false)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const [c, m, p, e] = await Promise.all([
+          getAllCids(),
+          getAllMedicamentos(),
+          getAllProcedimentos(),
+          getAllExames()
+        ])
+        setCids(c)
+        setMedicamentos(m)
+        setProcedimentos(p)
+        setExames(e)
+      } catch (err) {
+        toast.error((err as Error).message)
+      }
+    })()
+  }, [])
+
+  // --------------------
   // Autosave
-  const lsKey = `att-medico:${0}:${0}`
+  // --------------------
+  const lsKey = useMemo(() => {
+    const filaId = atendimento?.fila?.id ?? 0
+    const pacienteId = atendimento?.paciente?.id ?? 0
+    return `att-medico:${filaId}:${pacienteId}`
+  }, [atendimento?.fila?.id, atendimento?.paciente?.id])
+
   const saveLocal = useMemo(
     () =>
       debounce((data: any) => {
@@ -230,7 +291,50 @@ export default function AtendimentoConvencionalPage() {
     [lsKey]
   )
 
-  // Ações
+  // carregar do localStorage quando atendimento disponível
+  useEffect(() => {
+    if (!lsKey) return
+    try {
+      const raw = localStorage.getItem(lsKey)
+      if (!raw) return
+      const data = JSON.parse(raw)
+      setEvolucao(data.evolucao ?? '')
+      setSelectedCids(data.selectedCids ?? [])
+      setSelectedProceds(data.selectedProceds ?? [])
+      setSelectedExames(data.selectedExames ?? [])
+      setPrescricoes(data.prescricoes ?? [])
+      setOdontoSelections(data.odontoSelections ?? {})
+      // se havia procedimento id 4, reabrir odontograma
+      if ((data.selectedProceds ?? []).some((p: Procedimento) => p.id === 4)) {
+        setOdontogramaOpen(true)
+      }
+    } catch {}
+  }, [lsKey])
+
+  // salvar sempre que algo relevante mudar
+  useEffect(() => {
+    const snapshot = {
+      evolucao,
+      selectedCids,
+      selectedProceds,
+      selectedExames,
+      prescricoes,
+      odontoSelections
+    }
+    saveLocal(snapshot)
+  }, [
+    evolucao,
+    selectedCids,
+    selectedProceds,
+    selectedExames,
+    prescricoes,
+    odontoSelections,
+    saveLocal
+  ])
+
+  // --------------------
+  // UI helpers / ações
+  // --------------------
   const formatElapsed = (s: number) => {
     const mm = String(Math.floor(s / 60)).padStart(2, '0')
     const ss = String(s % 60).padStart(2, '0')
@@ -238,29 +342,69 @@ export default function AtendimentoConvencionalPage() {
   }
 
   const handleImprimirReceita = () => {
+    // TODO: integrar com rota/serviço que aplica o template e retorna PDF/print
     toast.message('Imprimir Receita (conectar ao template)')
   }
 
   const handleFinalizar = async () => {
-    if (atendimento) {
-      const atendimentoRealizado: Atendimento = {
-        id: atendimento.id,
-        evolucao: evolucao,
-        procedimentos: selectedProceds.map(p => p.id),
-        cids: selectedCids.map(p => p.id),
-        medicamentos: selectedMeds.map(p => p.id),
-        exames: selectedExames.map(p => p.id),
-      }
+    if (!atendimento) return
 
+    // montar itens de prescrição detalhados
+    const itensPrescricao = prescricoes.map(it => ({
+      medicamentoId: (it.medicamento as Medicamento)?.id ?? 0, // 0 se manual
+      nome:
+        (it.medicamento as Medicamento)?.nome ??
+        (it.medicamento as any)?.nome ??
+        String(it.medicamento),
+      qtd: it.qtd,
+      um: it.um,
+      freq: it.freq
+    }))
+
+    const atendimentoRealizado: Atendimento = {
+      id: atendimento.id,
+      evolucao,
+      procedimentos: selectedProceds.map(p => p.id),
+      cids: selectedCids.map(p => p.id),
+      // compatibilidade com backend atual (ids de medicamentos)
+      medicamentos: itensPrescricao
+        .map(x => x.medicamentoId)
+        .filter(id => id > 0),
+      exames: selectedExames.map(p => p.id),
+      // Se o seu backend já aceitar, envie também o detalhamento:
+      // @ts-ignore
+      itensPrescricao
+      // Se houver odontograma nesse fluxo médico, pode enviar em outro campo/rota
+      // odontograma: odontoSelections
+    }
+
+    // validação “vazio”
+    const vazio =
+      !evolucao.trim() &&
+      selectedProceds.length === 0 &&
+      selectedCids.length === 0 &&
+      selectedExames.length === 0 &&
+      itensPrescricao.length === 0
+
+    if (vazio) {
+      toast.warning(
+        'O atendimento está vazio. Adicione informações antes de finalizar.'
+      )
+      return
+    }
+
+    try {
+      await finalizarAtendimento(atendimentoRealizado)
+      setDirty(false)
       try {
-        await finalizarAtendimento(atendimentoRealizado);
-        toast.success("Atendimento realizado!")
-        router.push('/atendimento')
-      } catch {
-        toast.error("Finalização do atendimento falhou!")
-      } finally {        
-        setCarregando(false)
-      }
+        localStorage.removeItem(lsKey)
+      } catch {}
+      toast.success('Atendimento realizado!')
+      router.push('/atendimento')
+    } catch {
+      toast.error('Finalização do atendimento falhou!')
+    } finally {
+      setCarregando(false)
     }
   }
 
@@ -269,6 +413,28 @@ export default function AtendimentoConvencionalPage() {
     router.push('/atendimento')
   }
 
+  const handleImprimirAtestado = async () => {
+    try {
+      // TODO: chamar rota/serviço que gera o PDF do Atestado
+      // Ex.: fetch('/api/atestado', { method: 'POST', body: JSON.stringify(payload) })
+      toast.message('Imprimir Atestado (conectar ao template)')
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao imprimir atestado.')
+    }
+  }
+
+  const handleEncaminhar = async () => {
+    try {
+      setEncOpen(true) // <- abre o modal
+      toast.message('Encaminhar (abrir modal/fluxo de encaminhamento)')
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao encaminhar.')
+    }
+  }
+
+  // --------------------
+  // Render
+  // --------------------
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#f8f7f7] p-4">
@@ -316,13 +482,20 @@ export default function AtendimentoConvencionalPage() {
               <span className="text-sm text-muted-foreground">
                 Paciente:{' '}
                 <span className="font-medium">
-                  {atendimento?.paciente.nome || '—'}
+                  {atendimento?.paciente?.nome || '—'}
                 </span>{' '}
-                · PA: <span className="font-medium">{atendimento?.triagem?.pa || '—'}</span>
+                · PA:{' '}
+                <span className="font-medium">
+                  {atendimento?.triagem?.pa || '—'}
+                </span>
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Fila: <span className="font-medium">{atendimento?.fila?.nome}</span> · Tempo:{' '}
+              Fila:{' '}
+              <span className="font-medium">
+                {atendimento?.fila?.nome || '—'}
+              </span>{' '}
+              · Tempo:{' '}
               <span className="font-semibold">{formatElapsed(elapsed)}</span>
             </div>
           </div>
@@ -363,7 +536,11 @@ export default function AtendimentoConvencionalPage() {
                         <div>
                           <Label>Data de Nascimento</Label>
                           <Input
-                            value={safeDateLabel(atendimento?.paciente?.dataNascimento) || ''}
+                            value={
+                              safeDateLabel(
+                                atendimento?.paciente?.dataNascimento
+                              ) || ''
+                            }
                             readOnly
                             disabled
                           />
@@ -384,7 +561,11 @@ export default function AtendimentoConvencionalPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>PA</Label>
-                          <Input value={atendimento?.triagem?.pa || ''} readOnly disabled />
+                          <Input
+                            value={atendimento?.triagem?.pa || ''}
+                            readOnly
+                            disabled
+                          />
                         </div>
                         <div>
                           <Label>Comorbidades</Label>
@@ -404,13 +585,10 @@ export default function AtendimentoConvencionalPage() {
                         </div>
 
                         <div className="col-span-2 flex flex-wrap gap-2 mt-2">
-                          {/* {triagem?.hipertensao === 'sim' && (
-                            <Badge className="bg-rose-600">Hipertenso</Badge>
-                          )} */}
-                          {atendimento?.triagem?.comorbidades !== '' && (
+                          {atendimento?.triagem?.comorbidades && (
                             <Badge className="bg-amber-600">Comorbidade</Badge>
                           )}
-                          {atendimento?.triagem?.alergias !== '' && (
+                          {atendimento?.triagem?.alergias && (
                             <Badge className="bg-purple-600">Alergia</Badge>
                           )}
                           <Badge variant="secondary">
@@ -469,7 +647,7 @@ export default function AtendimentoConvencionalPage() {
                             type="button"
                             onClick={() => removeProced(p)}
                             className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
-                            aria-label={`Remover ${p}`}
+                            aria-label={`Remover ${p.nome}`}
                           >
                             ×
                           </button>
@@ -536,15 +714,13 @@ export default function AtendimentoConvencionalPage() {
                       ))}
                     </div>
                   )}
-
-                  {/* TODO: substituir filteredCids por resultados do backend */}
                 </div>
               </div>
             </section>
 
-            { odontogramaOpen && (<section className="border rounded-lg">
-              {/* Section 3 — Odontograma + Resumo */}
-              <div className="border rounded-lg">
+            {/* ODONTOGRAMA opcional (apenas quando id=4 presente) */}
+            {odontogramaOpen && (
+              <section className="border rounded-lg">
                 <div className="px-4 py-3 text-base font-semibold border-b">
                   Odontograma
                 </div>
@@ -647,10 +823,10 @@ export default function AtendimentoConvencionalPage() {
                     </div>
                   )}
                 </div>
-              </div>
-            </section>)}
+              </section>
+            )}
 
-            {/* Section 3 — Evolução (w-full) */}
+            {/* Section — Evolução (w-full) */}
             <section className="border rounded-lg">
               <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
                 Evolução
@@ -668,62 +844,25 @@ export default function AtendimentoConvencionalPage() {
               </div>
             </section>
 
-            {/* Section 4 — Prescrição (busca + outra) e Exames (lado a lado) */}
+            {/* Section — Prescrição & Exames (vertical: Prescrição acima, Exames abaixo) */}
             <section className="border rounded-lg">
               <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
                 Prescrição & Exames
               </div>
-              <div className="px-4 pb-4 grid mt-2 grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Prescrição */}
-                <div>
-                  <Label className="mb-2 mt-2 block">Buscar medicação</Label>
-                  <Input
-                    placeholder="Digite para buscar na base (ex: Dipirona 500 mg)"
-                    value={medQuery}
-                    onChange={e => {
-                      setMedQuery(e.target.value)
-                      setDirtyDebounced()
-                    }}
-                  />
-                  <div className="mt-2 max-h-40 overflow-auto rounded-md border divide-y">
-                    {filteredMeds.length === 0 && (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Nenhuma medicação encontrada
-                      </div>
-                    )}
-                    {filteredMeds.map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => addMed(m)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
-                      >
-                        {m.nome}
-                      </button>
-                    ))}
-                  </div>
 
-                  {/* Tags de medicações escolhidas */}
-                  {selectedMeds.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {selectedMeds.map(m => (
-                        <Badge key={m.id} variant="secondary" className="gap-1">
-                          {m.nome}
-                          <button
-                            type="button"
-                            onClick={() => removeMed(m)}
-                            className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
-                            aria-label={`Remover ${m.id}`}
-                          >
-                            ×
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+              {/* Stack vertical */}
+              <div className="px-4 pb-4 mt-2 space-y-6">
+                {/* Prescrição (fica em cima) */}
+                <div>
+                  <PrescricaoEditor
+                    medicamentos={medicamentos}
+                    value={prescricoes}
+                    onChange={setPrescricoes}
+                    onDirty={() => setDirty(true)}
+                  />
                 </div>
 
-                {/* Exames */}
+                {/* Exames (fica embaixo) */}
                 <div>
                   <Label className="mb-2 block">Solicitar Exames</Label>
                   <div className="grid sm:grid-cols-2 gap-3">
@@ -733,7 +872,7 @@ export default function AtendimentoConvencionalPage() {
                         className="inline-flex items-center gap-2 text-sm"
                       >
                         <Checkbox
-                          checked={selectedExames.includes(ex)}
+                          checked={selectedExames.some(e => e.id === ex.id)}
                           onCheckedChange={() => toggleExame(ex)}
                         />
                         <span>{ex.nome}</span>
@@ -745,37 +884,78 @@ export default function AtendimentoConvencionalPage() {
             </section>
 
             {/* Rodapé — Botões finais */}
-            <section className="flex flex-wrap gap-3 items-center justify-end pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleImprimirReceita}
-                className="gap-2"
-              >
-                <Printer className="h-4 w-4" />
-                Imprimir Receita
-              </Button>
+            <section className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              {/* Grupo de impressões/ações rápidas (à esquerda em telas largas) */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleImprimirReceita}
+                  className="gap-2 transition-colors hover:bg-gray-500 hover:text-gray-300"
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir Receita
+                </Button>
 
-              <Button
-                onClick={handleFinalizar}
-                className="gap-2 bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Finalizar Atendimento
-              </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleImprimirAtestado}
+                  className="gap-2 transition-colors hover:bg-gray-500 hover:text-gray-300"
+                >
+                  <FileText className="h-4 w-4" />
+                  Imprimir Atestado
+                </Button>
 
-              <Button
-                variant="outline"
-                className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                onClick={handleCancelar}
-              >
-                <XCircle className="h-4 w-4" />
-                Cancelar
-              </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleEncaminhar}
+                  className="gap-2 transition-colors hover:bg-gray-500 hover:text-gray-300"
+                >
+                  <Send className="h-4 w-4" />
+                  Encaminhar
+                </Button>
+              </div>
+
+              {/* Ações de conclusão (à direita em telas largas) */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                <Button
+                  onClick={handleFinalizar}
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Finalizar Atendimento
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={handleCancelar}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancelar
+                </Button>
+              </div>
             </section>
           </CardContent>
         </Card>
       </div>
+
+      <EncaminharModal
+        open={encOpen}
+        onOpenChange={setEncOpen}
+        atendimentoId={atendimento?.id ?? 0}
+        pacienteId={atendimento?.paciente?.id ?? 0}
+        especialidades={especialidades}
+        onConfirm={async payload => {
+          // Aqui você pluga seu backend/serviço real:
+          // await encaminharService.criar(payload)
+
+          console.log('Encaminhamento ->', payload)
+          toast.success('Encaminhamento enviado!')
+        }}
+      />
     </div>
   )
 }

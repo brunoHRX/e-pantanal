@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <title>Receita</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; }
+    .clinic { font-weight: 700; font-size: 18px; }
+    .doctor { font-size: 12px; opacity: .8; }
+    .title { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    th { background: #f4f4f4; }
+    .footer { margin-top: 28px; font-size: 12px; display:flex; justify-content: space-between; }
+    .sign { margin-top: 40px; text-align: right; }
+    .sign-line { width: 260px; border-top: 1px solid #000; margin-left: auto; padding-top: 6px; }
+    .obs { margin-top: 12px; font-size: 12px; white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="clinic">{{cabecalho.nomeClinica}}</div>
+      <div class="doctor">Dr(a). {{cabecalho.nomeMedico}} — CRM {{cabecalho.crm}}</div>
+      {{#if cabecalho.endereco}}<div class="doctor">{{cabecalho.endereco}}</div>{{/if}}
+    </div>
+    <div class="doctor">
+      <div>Data: {{data}}</div>
+      <div>Receita Nº: {{numero}}</div>
+    </div>
+  </div>
+
+  <div class="title">Paciente</div>
+  <div><strong>{{paciente.nome}}</strong> — {{paciente.documento}}</div>
+
+  <div class="title">Prescrição</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Medicação</th>
+        <th>QTD</th>
+        <th>U.M</th>
+        <th>Frequência</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each itens}}
+        <tr>
+          <td>{{this.nome}}</td>
+          <td>{{this.qtd}}</td>
+          <td>{{this.um}}</td>
+          <td>{{this.freq}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  {{#if observacoes}}
+  <div class="obs"><strong>Observações:</strong> {{observacoes}}</div>
+  {{/if}}
+
+  <div class="sign">
+    <div class="sign-line"></div>
+    <div>Assinatura e carimbo</div>
+  </div>
+
+  <div class="footer">
+    <div>Gerado por Medicos Pantanal</div>
+    <div>{{rodape}}</div>
+  </div>
+</body>
+</html>
