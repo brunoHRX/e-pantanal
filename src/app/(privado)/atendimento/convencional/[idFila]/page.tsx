@@ -26,6 +26,8 @@ import { getAtendimentoById } from '@/services/fluxoService'
 import { safeDateLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
 import { finalizarAtendimento } from '@/services/atendimentoService'
+import Odontograma from '../componentes/Odontograma'
+import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
 const debounce = (fn: (...a: any[]) => void, ms = 500) => {
   let t: any
@@ -40,6 +42,7 @@ export default function AtendimentoConvencionalPage() {
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
   const [evolucao, setEvolucao] = useState<string>("")
+  const [odontogramaOpen, setOdontogramaOpen] = useState<boolean>(false)
 
   // CID
   const [cids, setCids] = useState<Cid[]>([])
@@ -126,10 +129,18 @@ export default function AtendimentoConvencionalPage() {
   const addProced = (procedimento: Procedimento) => {
     if (selectedProceds.includes(procedimento)) return
     setSelectedProceds(prev => [...prev, procedimento])
+    if (selectedProceds.some(p => p.id === 4) || procedimento.id === 4) {
+      console.log('true');
+      
+      setOdontogramaOpen(true)
+    } else {
+      setOdontogramaOpen(false)
+    };
     setDirty(true)
   }
   const removeProced = (procedimento: Procedimento) => {
     if (selectedProceds.includes(procedimento)) setSelectedProceds(prev => prev.filter(c => c !== procedimento))
+    if (procedimento.id === 4) setOdontogramaOpen(false)
     setDirty(true)
   }
 
@@ -154,6 +165,15 @@ export default function AtendimentoConvencionalPage() {
     }
     setDirty(true)
   }  
+
+  //ODONTOGRAMA
+  const [odontoSelections, setOdontoSelections] = useState<ToothSelectionsMap>(
+    {}
+  )
+  
+  const selectionsArray = Object.values(odontoSelections).filter(
+    s => (s.procedures?.length || 0) > 0
+  )
 
   useEffect(() => {
     timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
@@ -521,6 +541,114 @@ export default function AtendimentoConvencionalPage() {
                 </div>
               </div>
             </section>
+
+            { odontogramaOpen && (<section className="border rounded-lg">
+              {/* Section 3 — Odontograma + Resumo */}
+              <div className="border rounded-lg">
+                <div className="px-4 py-3 text-base font-semibold border-b">
+                  Odontograma
+                </div>
+
+                <div className="px-2 sm:px-4 pb-4 w-full">
+                  <div className="w-full max-w-full">
+                    <Odontograma
+                      value={odontoSelections}
+                      onChange={v => {
+                        setOdontoSelections(v)
+                        setDirty(true)
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Resumo de procedimentos por dente */}
+                <div className="px-4 pb-4 pt-2 border-t space-y-2">
+                  <Label className="mb-2 block">
+                    Procedimentos selecionados por dente
+                  </Label>
+                  {selectionsArray.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum procedimento selecionado no odontograma.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {selectionsArray.map(sel => (
+                        <div key={sel.tooth} className="flex flex-col gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className="font-mono"
+                              title={`Dente ${sel.tooth} (Q${sel.quadrant})`}
+                            >
+                              {sel.tooth}
+                            </Badge>
+                            {sel.faces?.length > 0 && (
+                              <Badge variant="outline" className="opacity-80">
+                                Faces: {sel.faces.join('/')}
+                              </Badge>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() =>
+                                setOdontoSelections(prev => {
+                                  const next = { ...prev }
+                                  delete next[sel.tooth]
+                                  return next
+                                })
+                              }
+                            >
+                              Limpar dente
+                            </Button>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 pl-0 sm:pl-6">
+                            {sel.procedures.map(p => (
+                              <Badge
+                                key={`${sel.tooth}-${p}`}
+                                variant="secondary"
+                                className="gap-1"
+                              >
+                                {p}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOdontoSelections(prev => {
+                                      const next = { ...prev }
+                                      const atual = next[sel.tooth]
+                                      if (!atual) return prev
+                                      const novas = atual.procedures.filter(
+                                        proc => proc !== p
+                                      )
+                                      if (novas.length === 0) {
+                                        delete next[sel.tooth]
+                                      } else {
+                                        next[sel.tooth] = {
+                                          ...atual,
+                                          procedures: novas
+                                        }
+                                      }
+                                      return next
+                                    })
+                                    setDirty(true)
+                                  }}
+                                  className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
+                                  aria-label={`Remover ${p}`}
+                                  title="Remover procedimento"
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>)}
 
             {/* Section 3 — Evolução (w-full) */}
             <section className="border rounded-lg">
