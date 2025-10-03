@@ -41,6 +41,7 @@ import { QueueLegend } from '@/components/QueueLegend'
 export default function FilaDeAtendimentoPage() {
   const router = useRouter()
   const [userName, setUserName] = useState<string>("");
+  const [userId, setUserId] = useState<Number>();
   const [userFilas, setUserFilas] = useState<number[]>([]);
   const [results, setResults] = useState<AtendimentoFluxo[]>([])
   const [filtroPrioridade, setFiltroPrioridade] = useState<string[]>([])
@@ -62,6 +63,7 @@ export default function FilaDeAtendimentoPage() {
       const user = JSON.parse(storedUser);
       setUserName(user.usuario);
       setUserFilas(user.filas);
+      setUserId(user.id);
     }
   }, []);
 
@@ -90,7 +92,10 @@ export default function FilaDeAtendimentoPage() {
 
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
 
-        const emAtendimento = atendimento.usuario ? true : false;
+        var emAtendimento = atendimento.usuario ? true : false;
+        if (atendimento.usuario) {
+          if (atendimento.usuario_id == userId) emAtendimento = false;
+        }
 
         const matchPrioridade = filtroPrioridade.length === 0 || filtroPrioridade.map(s => s.toLowerCase()).includes(pacientePrioridade)
         

@@ -29,6 +29,7 @@ import {
 import { Cid, getAll as getAllCids } from '@/services/cidsService'
 import {
   Medicamento,
+  ReceitaMedicamento,
   getAll as getAllMedicamentos
 } from '@/services/medicamentoService'
 import { Exame, getAll as getAllExames } from '@/services/examesService'
@@ -50,9 +51,7 @@ import Odontograma from '../componentes/Odontograma'
 import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
 // NOVO: componente de prescrição
-import PrescricaoEditor, {
-  PrescricaoItem
-} from '../componentes/PrescricaoEditor'
+import PrescricaoEditor from '../componentes/PrescricaoEditor'
 
 import EncaminharModal from '@/components/EncaminharModal'
 
@@ -174,7 +173,7 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   // Prescrição (componente)
   // --------------------
-  const [prescricoes, setPrescricoes] = useState<PrescricaoItem[]>([])
+  const [prescricoes, setPrescricoes] = useState<ReceitaMedicamento[]>([])
 
   // --------------------
   // Odontograma
@@ -359,44 +358,26 @@ export default function AtendimentoConvencionalPage() {
   }
 
   const handleFinalizar = async () => {
+    
     if (!atendimento) return
 
     // montar itens de prescrição detalhados
-    const itensPrescricao = prescricoes.map(it => ({
-      medicamentoId: (it.medicamento as Medicamento)?.id ?? 0, // 0 se manual
-      nome:
-        (it.medicamento as Medicamento)?.nome ??
-        (it.medicamento as any)?.nome ??
-        String(it.medicamento),
-      qtd: it.qtd,
-      um: it.um,
-      freq: it.freq
-    }))
 
     const atendimentoRealizado: Atendimento = {
       id: atendimento.id,
       evolucao,
       procedimentos: selectedProceds.map(p => p.id),
       cids: selectedCids.map(p => p.id),
-      // compatibilidade com backend atual (ids de medicamentos)
-      medicamentos: itensPrescricao
-        .map(x => x.medicamentoId)
-        .filter(id => id > 0),
+      medicamentos: prescricoes.map(x => x.medicamento.id),
       exames: selectedExames.map(p => p.id),
-      // Se o seu backend já aceitar, envie também o detalhamento:
-      // @ts-ignore
-      itensPrescricao
-      // Se houver odontograma nesse fluxo médico, pode enviar em outro campo/rota
-      // odontograma: odontoSelections
     }
-
-    // validação “vazio”
+    
     const vazio =
       !evolucao.trim() &&
       selectedProceds.length === 0 &&
       selectedCids.length === 0 &&
       selectedExames.length === 0 &&
-      itensPrescricao.length === 0
+      prescricoes.length === 0
 
     if (vazio) {
       toast.warning(
@@ -405,19 +386,19 @@ export default function AtendimentoConvencionalPage() {
       return
     }
 
-    try {
-      await finalizarAtendimento(atendimentoRealizado)
-      setDirty(false)
-      try {
-        localStorage.removeItem(lsKey)
-      } catch {}
-      toast.success('Atendimento realizado!')
-      router.push('/atendimento')
-    } catch {
-      toast.error('Finalização do atendimento falhou!')
-    } finally {
-      setCarregando(false)
-    }
+    // try {
+    //   await finalizarAtendimento(atendimentoRealizado)
+    //   setDirty(false)
+    //   try {
+    //     localStorage.removeItem(lsKey)
+    //   } catch {}
+    //   toast.success('Atendimento realizado!')
+    //   router.push('/atendimento')
+    // } catch {
+    //   toast.error('Finalização do atendimento falhou!')
+    // } finally {
+    //   setCarregando(false)
+    // }
   }
 
   const handleCancelar = () => {
