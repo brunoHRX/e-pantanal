@@ -94,9 +94,6 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
       ${assinaturaImg}
       <div class="line"></div>
       <div class="small muted">Assinatura do Médico</div>
-    </div>
-    <div class="sig">
-      <div class="line"></div>
       <div class="small muted">Carimbo (Nome, CRM, Especialidade)</div>
     </div>
   </div>
