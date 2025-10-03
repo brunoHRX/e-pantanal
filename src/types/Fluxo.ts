@@ -57,3 +57,25 @@ export type TriagemFluxo = {
     alergias: string,
     prioridade: string,
 }
+
+export type ProfissionaisAtivos = {
+    usuario_id: number,
+    usuario: UsuarioProfissionaisAtivos,
+    atendendo: boolean,
+    ultimo_atendimento?: string,
+    paciente_id?: number
+    paciente?: PatientProfissionaisAtivos
+}
+
+export type UsuarioProfissionaisAtivos = {
+    nome: string,
+    especialidade: EspecialidadeProfissionaisAtivos
+}
+
+export type PatientProfissionaisAtivos = {
+    nome?: string
+}
+
+export type EspecialidadeProfissionaisAtivos = {
+    nome?: string
+}

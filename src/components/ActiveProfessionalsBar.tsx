@@ -9,22 +9,10 @@ import {
 } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import { ChevronsUpDown } from 'lucide-react'
-
-export type ProfessionalStatus = 'ATENDENDO' | 'OCIOSO'
-
-export type ActiveProfessional = {
-  id: number
-  nome: string
-  especialidade: string
-  status: ProfessionalStatus
-  /** ISO da data/hora em que entrou no status atual */
-  statusDesde: string
-  /** Nome do paciente em atendimento (se status === 'ATENDENDO') */
-  pacienteAtual?: string | null
-}
+import { ProfissionaisAtivos } from '@/services/fluxoService'
 
 type Props = {
-  profissionais: ActiveProfessional[]
+  profissionais: ProfissionaisAtivos[]
   className?: string
   /** inicia aberto? */
   defaultOpen?: boolean
@@ -41,7 +29,7 @@ export function ActiveProfessionalsBar({
   const [open, setOpen] = React.useState(defaultOpen)
 
   const total = profissionais.length
-  const atendendo = profissionais.filter(p => p.status === 'ATENDENDO').length
+  const atendendo = profissionais.filter(p => p.atendendo === true).length
   const ociosos = total - atendendo
 
   return (
@@ -81,7 +69,7 @@ export function ActiveProfessionalsBar({
           ) : (
             <ul className="divide-y rounded border">
               {profissionais.map(p => (
-                <ProfessionalRow key={p.id} prof={p} />
+                <ProfessionalRow key={p.usuario_id} prof={p} />
               ))}
             </ul>
           )}
@@ -92,28 +80,28 @@ export function ActiveProfessionalsBar({
 }
 
 /* === Item da lista (1 profissional por linha) === */
-function ProfessionalRow({ prof }: { prof: ActiveProfessional }) {
-  const elapsed = useElapsed(prof.statusDesde)
-  const isAtendendo = prof.status === 'ATENDENDO'
+function ProfessionalRow({ prof }: { prof: ProfissionaisAtivos }) {
+  const elapsed = (prof.ultimo_atendimento) ? useElapsed(prof.ultimo_atendimento) : "-"
+  const isAtendendo = prof.atendendo
 
   return (
     <li className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       {/* lado esquerdo: nome + especialidade + paciente (quando atendendo) */}
       <div className="flex flex-wrap items-center gap-x-3 text-sm">
-        <span className="font-medium truncate">{prof.nome}</span>
+        <span className="font-medium truncate">{prof.usuario.nome}</span>
         <span className="text-muted-foreground truncate">
-          ({prof.especialidade})
+          ({prof.usuario.especialidade.nome})
         </span>
-        {isAtendendo && prof.pacienteAtual && (
+        {isAtendendo && prof.paciente && (
           <span className="truncate">
-            Paciente: <b>{prof.pacienteAtual}</b>
+            Paciente: <b>{prof.paciente.nome}</b>
           </span>
         )}
       </div>
 
       {/* lado direito: status + tempo */}
       <div className="flex items-center gap-2">
-        <StatusBadge status={prof.status} />
+        <StatusBadge status={prof.atendendo} />
         <span className="text-xs tabular-nums text-muted-foreground">
           {elapsed}
         </span>
@@ -123,12 +111,11 @@ function ProfessionalRow({ prof }: { prof: ActiveProfessional }) {
 }
 
 /* === Badge de status === */
-function StatusBadge({ status }: { status: ProfessionalStatus }) {
-  const isAtendendo = status === 'ATENDENDO'
-  const classes = isAtendendo
+function StatusBadge({ status }: { status: boolean }) {
+  const classes = status
     ? 'bg-emerald-600 text-white border-emerald-600'
     : 'bg-amber-100 text-amber-800 border-amber-200'
-  const label = isAtendendo ? 'Atendendo' : 'Ocioso'
+  const label = status ? 'Atendendo' : 'Ocioso'
   return <Badge className={classes}>{label}</Badge>
 }
 

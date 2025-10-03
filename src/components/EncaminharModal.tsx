@@ -21,11 +21,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-
-export interface Especialidade {
-  id: number
-  nome: string
-}
+import { Especialidade } from '@/services/especialidadeService'
 
 interface EncaminharModalProps {
   open: boolean
@@ -94,7 +90,8 @@ export default function EncaminharModal({
         <DialogHeader>
           <DialogTitle>Encaminhar paciente</DialogTitle>
           <DialogDescription>
-            Selecione a especialidade de destino e informe o motivo (opcional).
+            Selecione a especialidade de destino.
+            {/* Selecione a especialidade de destino e informe o motivo (opcional). */}
           </DialogDescription>
         </DialogHeader>
 
@@ -115,14 +112,14 @@ export default function EncaminharModal({
             </Select>
           </div>
 
-          <div>
+          {/* <div>
             <Label className="mb-2 block">Motivo (opcional)</Label>
             <Textarea
               placeholder="Ex.: necessidade de avaliação especializada"
               value={motivo}
               onChange={e => setMotivo(e.target.value)}
             />
-          </div>
+          </div> */}
         </div>
 
         <DialogFooter className="mt-2">

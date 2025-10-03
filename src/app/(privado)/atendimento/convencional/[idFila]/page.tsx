@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +36,10 @@ import {
   Procedimento,
   getAll as getAllProcedimentos
 } from '@/services/procedimentoService'
+import {
+  Especialidade,
+  getAll as getAllEspecialidades
+} from '@/services/especialidadeService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
 import { safeDateLabel } from '@/utils/functions'
@@ -50,7 +54,7 @@ import PrescricaoEditor, {
   PrescricaoItem
 } from '../componentes/PrescricaoEditor'
 
-import EncaminharModal, { Especialidade } from '@/components/EncaminharModal'
+import EncaminharModal from '@/components/EncaminharModal'
 
 // --------------------
 // Utils
@@ -65,10 +69,13 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
-
+  const [userTipoAtendimento, setUserTipoAtendimento] = useState<string>("");
+  const [userEspecialidade, setUserEspecialidade] = useState<number>();
   // --------------------
   // Estados principais
   // --------------------
+  
+  const { idFila } = useParams<{ idFila: string }>() 
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
   const [evolucao, setEvolucao] = useState<string>('')
@@ -152,15 +159,6 @@ export default function AtendimentoConvencionalPage() {
   const [encOpen, setEncOpen] = useState(false)
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
 
-  useEffect(() => {
-    // TODO: trocar pelo service real
-    setEspecialidades([
-      { id: 1, nome: 'Cardiologia' },
-      { id: 2, nome: 'Ortopedia' },
-      { id: 3, nome: 'Dermatologia' }
-    ])
-  }, [])
-
   // Exames
   const [exames, setExames] = useState<Exame[]>([])
   const [selectedExames, setSelectedExames] = useState<Exame[]>([])
@@ -238,39 +236,53 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   // Carregamento inicial
   // --------------------
-  useEffect(() => {
-    setCarregando(true)
-    ;(async () => {
-      try {
-        // Ajuste aqui para o ID correto do atendimento
-        const dados = await getAtendimentoById(22)
-        setAtendimento(dados)
-      } catch (err) {
-        toast.error((err as Error).message)
-      } finally {
-        setCarregando(false)
-      }
-    })()
-  }, [])
+  useEffect(() => {    
+    if(!idFila) return
+    handleSearch()
+  }, [idFila, userEspecialidade])
 
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const [c, m, p, e] = await Promise.all([
-          getAllCids(),
-          getAllMedicamentos(),
-          getAllProcedimentos(),
-          getAllExames()
-        ])
-        setCids(c)
-        setMedicamentos(m)
-        setProcedimentos(p)
-        setExames(e)
-      } catch (err) {
-        toast.error((err as Error).message)
+  const handleSearch = async () => {
+    setCarregando(true)    
+    const storedUser = localStorage.getItem("userData");    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserTipoAtendimento(user.tipo_atendimento);
+      setUserEspecialidade(user.especialidade_id);
+    }
+
+    try {
+      // Ajuste aqui para o ID correto do atendimento
+      const [a, c, m, p, e, esp] = await Promise.all([
+        getAtendimentoById(Number(idFila)),
+        getAllCids(),
+        getAllMedicamentos(),
+        getAllProcedimentos(),
+        getAllExames(),
+        getAllEspecialidades()
+      ])
+      setAtendimento(a)
+      setCids(c)
+      setMedicamentos(m)
+      setProcedimentos(p)
+      setExames(e)
+      setEspecialidades(esp)
+      if (userEspecialidade && userTipoAtendimento) {
+        const selecionados = p.filter(proc => proc.especialidade_id == userEspecialidade)
+        
+        const idEspecialidade = userTipoAtendimento === "medico" ? 1 : 2
+        const relacionados = p.filter(proc => proc.especialidade_id == idEspecialidade)
+
+        const unicos = [...selecionados, ...relacionados]
+          .filter((v, i, arr) => arr.findIndex(o => o.id === v.id) === i)
+          
+        setSelectedProceds(unicos)
       }
-    })()
-  }, [])
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setCarregando(false)
+    }
+  }
 
   // --------------------
   // Autosave

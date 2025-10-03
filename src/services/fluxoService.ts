@@ -1,6 +1,6 @@
 import { API_BASE, headers } from "@/utils/constants";
 import { Especialidade } from "@/types/Especialidade";
-import { AtendimentoFilas, AtendimentoFluxo, FilasFluxo } from "@/types/Fluxo";
+import { AtendimentoFilas, AtendimentoFluxo, FilasFluxo, ProfissionaisAtivos } from "@/types/Fluxo";
 
 const caminho = "Fluxo";
 const elemento_singular = "atendimento";
@@ -60,4 +60,14 @@ export async function getAtendimentoById(id: number): Promise<AtendimentoFluxo> 
     return list;
 }
 
-export type { Especialidade, AtendimentoFluxo, AtendimentoFilas, FilasFluxo }
+export async function getProfissionais(): Promise<ProfissionaisAtivos[]> {
+    const res = await fetch(`${API_BASE}/api/${caminho}/profissionais`, { headers: headers() });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Erro ${res.status} ao buscar ${elemento_plural}: ${msg}`);
+    }
+    const list: ProfissionaisAtivos[] = await res.json();
+    return list;
+}
+
+export type { Especialidade, AtendimentoFluxo, AtendimentoFilas, FilasFluxo, ProfissionaisAtivos }

@@ -36,7 +36,9 @@ import {
   FilasFluxo,
   getFilas,
   encaminharPaciente,
-  removerPaciente
+  removerPaciente,
+  ProfissionaisAtivos,
+  getProfissionais
 } from '@/services/fluxoService'
 import { getAll as getEspecialidades } from '@/services/especialidadeService'
 import {
@@ -54,10 +56,7 @@ import { toast } from 'sonner'
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 import { QueueLegend } from '@/components/QueueLegend'
 import { stat } from 'fs'
-import {
-  ActiveProfessionalsBar,
-  ActiveProfessional
-} from '@/components/ActiveProfessionalsBar'
+import { ActiveProfessionalsBar } from '@/components/ActiveProfessionalsBar'
 
 export default function FilaEsperaPage() {
   const [query, setQuery] = useState('')
@@ -176,48 +175,17 @@ export default function FilaEsperaPage() {
     runSearch()
   }
 
-  const [profissionais, setProfissionais] = useState<ActiveProfessional[]>([])
+  const [profissionais, setProfissionais] = useState<ProfissionaisAtivos[]>([])
   useEffect(() => {
     loadProfissionaisAtivos()
   }, [])
 
   async function loadProfissionaisAtivos() {
     try {
-      // TODO: troque pelo seu service real
-      // ex: const dados = await getProfissionaisAtivos()
-      // setProfissionais(dados)
-
-      // MOCK de exemplo (remova após integrar):
-      const mock: ActiveProfessional[] = [
-        {
-          id: 1,
-          nome: 'Dra. Barbara Lima',
-          especialidade: 'Triagem',
-          status: 'ATENDENDO',
-          statusDesde: new Date(Date.now() - 13 * 60 * 1000).toISOString(), // 13 min
-          pacienteAtual: 'MILENA RODRIGUES BOIADEIRO'
-        },
-        {
-          id: 2,
-          nome: 'Dr. Rafael Nogueira',
-          especialidade: 'Odontologia',
-          status: 'OCIOSO',
-          statusDesde: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5h
-        },
-        {
-          id: 3,
-          nome: 'Dra. Caroline Bezerra',
-          especialidade: 'Pediatria',
-          status: 'ATENDENDO',
-          statusDesde: new Date(
-            Date.now() - 2 * 60 * 60 * 1000 - 20 * 60 * 1000
-          ).toISOString(), // 2h20
-          pacienteAtual: 'JOÃO PEDRO ALMEIDA'
-        }
-      ]
-      setProfissionais(mock)
+      const profissionaisAtivos = await getProfissionais();
+      setProfissionais(profissionaisAtivos)
     } catch (err) {
-      // opcionalmente: toast.error((err as Error).message)
+      toast.error((err as Error).message)
       setProfissionais([])
     }
   }
