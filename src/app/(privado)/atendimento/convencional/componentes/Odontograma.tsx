@@ -1,17 +1,17 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import {
-  OdontogramaQuadrante,
-  type ToothSelectionsMap
-} from './OdontogramaQuadrante'
+import { OdontogramaQuadrante } from './OdontogramaQuadrante'
 import { Button } from '@/components/ui/button'
+import { ToothSelection } from '@/services/atendimentoService'
+import { Procedimento } from '@/types/Procedimento'
 
 export type OdontogramaProps = {
   /** Estado controlado vindo do pai (mapa por número do dente) */
-  value?: ToothSelectionsMap
+  value?: ToothSelection[]
+  procedimentosOdontologicos: Procedimento[]
   /** Disparado quando o usuário salva alterações em um dente */
-  onChange?: (next: ToothSelectionsMap) => void
+  onChange?: (next: ToothSelection) => void
   /** Tipo inicial apenas visual */
   defaultTipo?: 'permanente' | 'deciduos'
 }
@@ -23,16 +23,15 @@ export type OdontogramaProps = {
  * - tamanhos RESPONSIVOS no próprio componente (sem causar scroll)
  */
 export default function Odontograma({
-  value,
+  value = [],
+  procedimentosOdontologicos = [],
   onChange,
   defaultTipo = 'permanente'
 }: OdontogramaProps) {
   const [tipo, setTipo] = useState<'permanente' | 'deciduos'>(defaultTipo)
 
-  const applyPartial = (partial: ToothSelectionsMap) => {
-    const current = value ?? {}
-    const next = { ...current, ...partial }
-    onChange?.(next)
+  const applyPartial = (partial: ToothSelection) => {
+    onChange?.(partial)
   }
 
   const grupos = useMemo(() => {
@@ -80,6 +79,7 @@ export default function Odontograma({
             titulo={grupos[0].titulo}
             tamanho="auto" // <= responsivo
             outlineGroup
+            procedimentosOdonto={procedimentosOdontologicos}
             selections={value ?? {}}
             onChange={applyPartial}
           />
@@ -89,6 +89,7 @@ export default function Odontograma({
             titulo={grupos[1].titulo}
             tamanho="auto"
             outlineGroup
+            procedimentosOdonto={procedimentosOdontologicos}
             selections={value ?? {}}
             onChange={applyPartial}
           />
@@ -100,6 +101,7 @@ export default function Odontograma({
             titulo={grupos[2].titulo}
             tamanho="auto"
             outlineGroup
+            procedimentosOdonto={procedimentosOdontologicos}
             selections={value ?? {}}
             onChange={applyPartial}
           />
@@ -109,6 +111,7 @@ export default function Odontograma({
             titulo={grupos[3].titulo}
             tamanho="auto"
             outlineGroup
+            procedimentosOdonto={procedimentosOdontologicos}
             selections={value ?? {}}
             onChange={applyPartial}
           />

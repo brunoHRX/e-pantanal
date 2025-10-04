@@ -45,10 +45,9 @@ import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
 import { safeDateLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
-import { finalizarAtendimento } from '@/services/atendimentoService'
+import { ToothSelection, finalizarAtendimento } from '@/services/atendimentoService'
 
 import Odontograma from '../componentes/Odontograma'
-import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
 
 // NOVO: componente de prescrição
 import PrescricaoEditor from '../componentes/PrescricaoEditor'
@@ -178,13 +177,54 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   // Odontograma
   // --------------------
-  const [odontoSelections, setOdontoSelections] = useState<ToothSelectionsMap>(
-    {}
-  )
+  const [odontoSelections, setOdontoSelections] = useState<ToothSelection[]>([])
   const selectionsArray = Object.values(odontoSelections).filter(
     s => (s.procedures?.length || 0) > 0
   )
+  const addOdonto = (tooth: ToothSelection) => {
+    setOdontoSelections(prev => {
+        const exists = prev.some(
+          p => p.tooth === tooth.tooth && p.quadrant === tooth.quadrant
+        )
+    
+        if (exists) {
+          return prev.map(p =>
+            p.tooth === tooth.tooth && p.quadrant === tooth.quadrant ? tooth : p
+          )
+        }
+    
+        return [...prev, tooth]
+    })
+    setDirty(true)
+  }
 
+  const removeOdonto = (tooth: ToothSelection) => {
+    setOdontoSelections(prev =>
+      prev.filter(
+        p => !(p.tooth === tooth.tooth && p.quadrant === tooth.quadrant)
+      )
+    )
+    setDirty(true)
+  }
+  
+  const removeOdontoProcedimento = (tooth: ToothSelection, toothProc: number) => {
+    setOdontoSelections(prev => {
+      const arr = Array.isArray(prev) ? prev : []
+  
+      const next = arr.map(p => {
+        if (p.tooth === tooth.tooth && p.quadrant === tooth.quadrant) {
+          return {
+            ...p,
+            procedures: p.procedures.filter(proc => proc.id !== toothProc)
+          }
+        }
+        return p
+      })
+  
+      return next
+    })  
+    setDirty(true)
+  }
   // --------------------
   // Cronômetro / atalhos / navegação segura
   // --------------------
@@ -314,7 +354,6 @@ export default function AtendimentoConvencionalPage() {
       setSelectedProceds(data.selectedProceds ?? [])
       setSelectedExames(data.selectedExames ?? [])
       setPrescricoes(data.prescricoes ?? [])
-      setOdontoSelections(data.odontoSelections ?? {})
       // se havia procedimento id 4, reabrir odontograma
       if ((data.selectedProceds ?? []).some((p: Procedimento) => p.id === 4)) {
         setOdontogramaOpen(true)
@@ -370,6 +409,7 @@ export default function AtendimentoConvencionalPage() {
       cids: selectedCids.map(p => p.id),
       medicamentos: prescricoes.map(x => x.medicamento.id),
       exames: selectedExames.map(p => p.id),
+      procedimentosOdontologicos: odontoSelections,
     }
     
     const vazio =
@@ -385,6 +425,9 @@ export default function AtendimentoConvencionalPage() {
       )
       return
     }
+
+    console.log(atendimentoRealizado);
+    
 
     // try {
     //   await finalizarAtendimento(atendimentoRealizado)
@@ -722,8 +765,9 @@ export default function AtendimentoConvencionalPage() {
                   <div className="w-full max-w-full">
                     <Odontograma
                       value={odontoSelections}
+                      procedimentosOdontologicos = {procedimentos.filter(proc => proc.especialidade_id == 2)}
                       onChange={v => {
-                        setOdontoSelections(v)
+                        addOdonto(v);
                         setDirty(true)
                       }}
                     />
@@ -761,11 +805,7 @@ export default function AtendimentoConvencionalPage() {
                               size="sm"
                               className="h-6 px-2"
                               onClick={() =>
-                                setOdontoSelections(prev => {
-                                  const next = { ...prev }
-                                  delete next[sel.tooth]
-                                  return next
-                                })
+                                removeOdonto(sel)
                               }
                             >
                               Limpar dente
@@ -775,33 +815,17 @@ export default function AtendimentoConvencionalPage() {
                           <div className="flex flex-wrap gap-2 pl-0 sm:pl-6">
                             {sel.procedures.map(p => (
                               <Badge
-                                key={`${sel.tooth}-${p}`}
+                                key={`${sel.tooth}-${p.id}`}
                                 variant="secondary"
                                 className="gap-1"
+                                onClick={() => {
+                                  removeOdontoProcedimento(sel, p.id)
+                                  setDirty(true)
+                                }}
                               >
-                                {p}
+                                {p.nome}
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setOdontoSelections(prev => {
-                                      const next = { ...prev }
-                                      const atual = next[sel.tooth]
-                                      if (!atual) return prev
-                                      const novas = atual.procedures.filter(
-                                        proc => proc !== p
-                                      )
-                                      if (novas.length === 0) {
-                                        delete next[sel.tooth]
-                                      } else {
-                                        next[sel.tooth] = {
-                                          ...atual,
-                                          procedures: novas
-                                        }
-                                      }
-                                      return next
-                                    })
-                                    setDirty(true)
-                                  }}
                                   className="ml-1 rounded-full px-1 text-xs opacity-70 hover:opacity-100"
                                   aria-label={`Remover ${p}`}
                                   title="Remover procedimento"
