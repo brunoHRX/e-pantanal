@@ -43,7 +43,7 @@ import {
 } from '@/services/especialidadeService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
-import { safeDateLabel } from '@/utils/functions'
+import { generateAndDownload, safeDateLabel, safeDateTimeLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
 import { ToothSelection, finalizarAtendimento } from '@/services/atendimentoService'
 
@@ -67,6 +67,9 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
+  const [userName, setUserName] = useState("");
+  const [userCRM, setCRM] = useState("");
+  const [userEspecialidadeDesc, setEspecialidadeDesc] = useState("");
   const [userTipoAtendimento, setUserTipoAtendimento] = useState<string>("");
   const [userEspecialidade, setUserEspecialidade] = useState<number>();
   // --------------------
@@ -277,6 +280,15 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   useEffect(() => {    
     if(!idFila) return
+    const storedUser = localStorage.getItem("userData");
+    console.log(storedUser);
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserName(user.usuario.toUpperCase());
+      setCRM(user.crm.toUpperCase());
+      setEspecialidadeDesc(user.crm.toUpperCase());
+    }
     handleSearch()
   }, [idFila, userEspecialidade])
 
@@ -391,9 +403,30 @@ export default function AtendimentoConvencionalPage() {
     return `${mm}:${ss}`
   }
 
-  const handleImprimirReceita = () => {
-    // TODO: integrar com rota/serviço que aplica o template e retorna PDF/print
-    toast.message('Imprimir Receita (conectar ao template)')
+  const handleImprimirReceita = async () => {
+    try {
+      if (atendimento) {
+        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
+        var medicacoesList: string[] = []
+        prescricoes.forEach(element => {
+          const medicacao = element.medicamento.nome.toUpperCase() + " - a cada " + element.frequencia + " horas por " + element.duracao + " dias."
+          medicacoesList.push(medicacao);
+        });
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
+          data_hora: safeDateTimeLabel(new Date().toISOString()),
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM,
+          especialidade: especialidadedDesc,
+          medicacoes: medicacoesList
+        }
+        await generateAndDownload('/api/receituario-html', payload, 'receituario')
+        toast.message('Receituário gerado com sucesso!')
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar Receituário')
+    }
   }
 
   const handleFinalizar = async () => {
@@ -448,9 +481,24 @@ export default function AtendimentoConvencionalPage() {
 
   const handleImprimirAtestado = async () => {
     try {
-      // TODO: chamar rota/serviço que gera o PDF do Atestado
-      // Ex.: fetch('/api/atestado', { method: 'POST', body: JSON.stringify(payload) })
-      toast.message('Imprimir Atestado (conectar ao template)')
+      if (atendimento) {
+        const entrada = new Date(atendimento.entrada)
+        entrada.setDate(entrada.getDate() + 1)
+
+        const inicio_afastamento = safeDateLabel(entrada.toISOString())
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_atendimento: safeDateLabel(atendimento.entrada), // dd/mm/aaaa
+          // dias_afastamento: '3',
+          inicio_afastamento: inicio_afastamento,
+          // diagnostico: 'Gripe viral',
+          // cid: 'J11',
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM
+        }
+        await generateAndDownload('/api/atestado-html', payload, 'atestado')
+        toast.message('Atestado gerado com sucesso!')
+      }
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao imprimir atestado.')
     }
