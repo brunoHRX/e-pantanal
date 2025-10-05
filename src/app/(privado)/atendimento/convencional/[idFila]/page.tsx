@@ -407,7 +407,7 @@ export default function AtendimentoConvencionalPage() {
       evolucao,
       procedimentos: selectedProceds.map(p => p.id),
       cids: selectedCids.map(p => p.id),
-      medicamentos: prescricoes.map(x => x.medicamento.id),
+      medicamentos: prescricoes,
       exames: selectedExames.map(p => p.id),
       procedimentosOdontologicos: odontoSelections,
     }
@@ -426,22 +426,19 @@ export default function AtendimentoConvencionalPage() {
       return
     }
 
-    console.log(atendimentoRealizado);
-    
-
-    // try {
-    //   await finalizarAtendimento(atendimentoRealizado)
-    //   setDirty(false)
-    //   try {
-    //     localStorage.removeItem(lsKey)
-    //   } catch {}
-    //   toast.success('Atendimento realizado!')
-    //   router.push('/atendimento')
-    // } catch {
-    //   toast.error('Finalização do atendimento falhou!')
-    // } finally {
-    //   setCarregando(false)
-    // }
+    try {
+      await finalizarAtendimento(atendimentoRealizado)
+      setDirty(false)
+      try {
+        localStorage.removeItem(lsKey)
+      } catch {}
+      toast.success('Atendimento realizado!')
+      router.push('/atendimento')
+    } catch {
+      toast.error('Finalização do atendimento falhou!')
+    } finally {
+      setCarregando(false)
+    }
   }
 
   const handleCancelar = () => {

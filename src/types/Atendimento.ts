@@ -1,3 +1,4 @@
+import { Medicamento } from "./Medicamento"
 import { Procedimento } from "./Procedimento"
 
 export type Atendimento = {
@@ -5,9 +6,16 @@ export type Atendimento = {
     evolucao: string,
     procedimentos: number[],
     cids: number[],
-    medicamentos: number[],
+    medicamentos: AtendimentoMedicamento[],
     exames: number[],
     procedimentosOdontologicos: ToothSelection[]
+}
+
+export type AtendimentoMedicamento = {
+    duracao: number,
+    frequencia: string,
+    medicamento: Medicamento,
+    observacao: string    
 }
 
 const FACES = [
