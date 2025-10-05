@@ -45,7 +45,7 @@ import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
 import { generateAndDownload, safeDateLabel, safeDateTimeLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
-import { ToothSelection, finalizarAtendimento } from '@/services/atendimentoService'
+import { ToothSelection, finalizarAtendimento, EncaminhamentoMedico, encaminharAtendimento } from '@/services/atendimentoService'
 
 import Odontograma from '../componentes/Odontograma'
 
@@ -506,10 +506,21 @@ export default function AtendimentoConvencionalPage() {
 
   const handleEncaminhar = async () => {
     try {
-      setEncOpen(true) // <- abre o modal
-      toast.message('Encaminhar (abrir modal/fluxo de encaminhamento)')
+      setEncOpen(true)
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao encaminhar.')
+    }
+  }
+  
+  const handleEncaminhamentoMedico = async (encaminhamento: EncaminhamentoMedico) => {
+    setCarregando(true)
+    try {
+      await encaminharAtendimento(encaminhamento)
+      toast.success('Atendimento encaminhado!')
+    } catch {
+      toast.error('Encaminhamento do atendimento falhou!')
+    } finally {
+      setCarregando(false)
     }
   }
 
@@ -1011,11 +1022,7 @@ export default function AtendimentoConvencionalPage() {
         pacienteId={atendimento?.paciente?.id ?? 0}
         especialidades={especialidades}
         onConfirm={async payload => {
-          // Aqui você pluga seu backend/serviço real:
-          // await encaminharService.criar(payload)
-
-          console.log('Encaminhamento ->', payload)
-          toast.success('Encaminhamento enviado!')
+          handleEncaminhamentoMedico(payload);
         }}
       />
     </div>

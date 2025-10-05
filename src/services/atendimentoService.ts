@@ -1,6 +1,6 @@
 import { API_BASE, headers } from "@/utils/constants";
 import { AtendimentoFluxo } from "@/types/Fluxo";
-import { Atendimento, FaceKey, ToothSelection } from "@/types/Atendimento";
+import { Atendimento, FaceKey, ToothSelection, EncaminhamentoMedico } from "@/types/Atendimento";
 const caminho = "Atendimentos";
 const elemento_singular = "atendimento";
 
@@ -22,4 +22,12 @@ export async function finalizarAtendimento(atendimento: Atendimento): Promise<vo
     }
 }
 
-export type { AtendimentoFluxo, FaceKey, ToothSelection }
+export async function encaminharAtendimento(encaminhamento: EncaminhamentoMedico): Promise<void> { 
+    const res = await fetch(`${API_BASE}/api/${caminho}/encaminhamento`, { method: "POST", headers: headers(), body: JSON.stringify(encaminhamento) });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Erro ${res.status} ao finalizar ${elemento_singular}: ${msg}`);
+    }
+}
+
+export type { AtendimentoFluxo, FaceKey, ToothSelection, EncaminhamentoMedico }

@@ -33,7 +33,7 @@ interface EncaminharModalProps {
     atendimentoId: number
     pacienteId: number
     especialidadeId: number
-    motivo: string | null
+    motivo?: string
   }) => Promise<void> | void
 }
 
@@ -67,7 +67,7 @@ export default function EncaminharModal({
         atendimentoId,
         pacienteId,
         especialidadeId: Number(selectedId),
-        motivo: motivo.trim() || null
+        motivo: motivo.trim() ?? ""
       }
       if (onConfirm) {
         await onConfirm(payload)
