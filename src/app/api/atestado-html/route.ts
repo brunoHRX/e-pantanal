@@ -54,10 +54,10 @@ export async function POST(req: NextRequest) {
     const html = renderAtestadoHTML({
       paciente_nome: body.paciente_nome ?? "Maria Souza",
       data_atendimento: body.data_atendimento ?? "05/10/2025",
-      dias_afastamento: body.dias_afastamento ?? "3",
+      // dias_afastamento: body.dias_afastamento ?? "3",
       inicio_afastamento: body.inicio_afastamento ?? "06/10/2025",
-      diagnostico: body.diagnostico ?? "Gripe viral",
-      cid: body.cid ?? "J11",
+      // diagnostico: body.diagnostico ?? "Gripe viral",
+      // cid: body.cid ?? "J11",
       medico_nome: body.medico_nome ?? "Dr. João Pedro",
       crm: body.crm ?? "CRM-MS 98765",
       assinaturaDataUri: body.assinaturaDataUri, // opcional: passe no body se quiser
