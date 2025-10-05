@@ -131,3 +131,28 @@ export function prioridadeDesc(prioridade:string): string {
     }
     return cor;
 }
+
+export async function generateAndDownload(
+    endpoint: string,
+    payload: any,
+    prefix: string
+  ) {
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error ?? `Erro ao gerar ${prefix}`)
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${prefix}_${Date.now()}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+}
