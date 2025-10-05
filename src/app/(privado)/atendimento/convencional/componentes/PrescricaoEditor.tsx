@@ -7,19 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { X } from 'lucide-react'
-import type { Medicamento } from '@/services/medicamentoService'
-
-export interface PrescricaoItem {
-  medicamento: Medicamento | { id: number; nome: string } // suporta item manual
-  qtd: string
-  um: string
-  freq: string
-}
+import type { Medicamento, ReceitaMedicamento } from '@/services/medicamentoService'
 
 interface PrescricaoEditorProps {
   medicamentos: Medicamento[]
-  value: PrescricaoItem[]
-  onChange: (items: PrescricaoItem[]) => void
+  value: ReceitaMedicamento[]
+  onChange: (items: ReceitaMedicamento[]) => void
   onDirty?: () => void
 }
 
@@ -33,6 +26,7 @@ export default function PrescricaoEditor({
 }: PrescricaoEditorProps) {
   // busca
   const [query, setQuery] = useState('')
+  const [lastId, setLastId] = useState<number>(0);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return medicamentos.slice(0, 12)
@@ -46,11 +40,11 @@ export default function PrescricaoEditor({
       toast.info('Medicação já adicionada.')
       return
     }
-    const novo: PrescricaoItem = {
+    const novo: ReceitaMedicamento = {
       medicamento: m,
-      qtd: '',
-      um: '',
-      freq: ''
+      duracao: 0,
+      observacao: '',
+      frequencia: ''
     }
     onChange([...value, novo])
     onDirty?.()
@@ -62,15 +56,16 @@ export default function PrescricaoEditor({
   const addManual = () => {
     const nome = manual.trim()
     if (!nome) return
-    const novo: PrescricaoItem = {
-      medicamento: { id: Date.now(), nome }, // id temporário local
-      qtd: '',
-      um: '',
-      freq: ''
+    const novo: ReceitaMedicamento = {
+      medicamento: { id: lastId, nome, ativo: true }, // id temporário local
+      duracao: 0,
+      observacao: '',
+      frequencia: ''
     }
     onChange([...value, novo])
     onDirty?.()
     setManual('')
+    setLastId(lastId-1)
   }
 
   const removeIndex = (idx: number) => {
@@ -80,7 +75,7 @@ export default function PrescricaoEditor({
     onDirty?.()
   }
 
-  const setField = (idx: number, field: keyof PrescricaoItem, val: string) => {
+  const setField = (idx: number, field: keyof ReceitaMedicamento, val: string) => {
     const next = value.slice()
     ;(next[idx] as any)[field] = val
     onChange(next)
@@ -163,8 +158,8 @@ export default function PrescricaoEditor({
                 <Input
                   placeholder="QTD"
                   inputMode="numeric"
-                  value={it.qtd}
-                  onChange={e => setField(idx, 'qtd', e.target.value)}
+                  value={it.duracao}
+                  onChange={e => setField(idx, 'duracao', e.target.value)}
                   aria-label="Quantidade (QTD)"
                   title="Quantidade (QTD)"
                 />
@@ -172,8 +167,8 @@ export default function PrescricaoEditor({
                 <Input
                   placeholder="U.M"
                   list={`um-sugestoes-${idx}`}
-                  value={it.um}
-                  onChange={e => setField(idx, 'um', e.target.value)}
+                  value={it.observacao}
+                  onChange={e => setField(idx, 'observacao', e.target.value)}
                   aria-label="Unidade de Medida (U.M)"
                   title="Unidade de Medida (U.M)"
                 />
@@ -185,8 +180,8 @@ export default function PrescricaoEditor({
 
                 <Input
                   placeholder="Frequência (ex: 8/8h)"
-                  value={it.freq}
-                  onChange={e => setField(idx, 'freq', e.target.value)}
+                  value={it.frequencia}
+                  onChange={e => setField(idx, 'frequencia', e.target.value)}
                   aria-label="Frequência"
                   title="Frequência"
                 />

@@ -1,5 +1,5 @@
 import { API_BASE, headers } from "@/utils/constants";
-import { Medicamento } from "@/types/Medicamento";
+import { Medicamento, ReceitaMedicamento } from "@/types/Medicamento";
 const caminho = "Medicamentos";
 const elemento_singular = "medicamento";
 const elemento_plural = "medicamentos";
@@ -50,4 +50,4 @@ export async function deleteElement(id: number): Promise<void> {
     }
 }
 
-export type { Medicamento }
+export type { Medicamento, ReceitaMedicamento }

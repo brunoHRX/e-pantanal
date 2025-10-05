@@ -1,6 +1,6 @@
 import { API_BASE, headers } from "@/utils/constants";
 import { AtendimentoFluxo } from "@/types/Fluxo";
-import { Atendimento } from "@/types/Atendimento";
+import { Atendimento, FaceKey, ToothSelection } from "@/types/Atendimento";
 const caminho = "Atendimentos";
 const elemento_singular = "atendimento";
 
@@ -22,4 +22,4 @@ export async function finalizarAtendimento(atendimento: Atendimento): Promise<vo
     }
 }
 
-export type { AtendimentoFluxo }
+export type { AtendimentoFluxo, FaceKey, ToothSelection }
