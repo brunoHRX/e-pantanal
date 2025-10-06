@@ -42,3 +42,4 @@ next-env.d.ts
 
 .vercel
 src/utils/constants.ts
+src/utils/constants.ts
