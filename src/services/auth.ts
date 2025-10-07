@@ -12,6 +12,7 @@ export interface LoginResponse {
     usuario: string;
     email: string;
     tipo_atendimento: string;
+    crm: string;
     especialidade_id: number;
     email_verificacao: string | null;
     ativo: boolean;

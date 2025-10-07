@@ -1,15 +1,4 @@
-export type MedicacaoItem = {
-  nome?: string // "Dipirona 500mg"
-  tipoUso?: string // "contínuo", "eventual", "noturno", etc.
-  quantidade?: string // "20", "1", "5"
-  unidade?: string // "comprimidos", "ml", "caixas", "gotas"
-  tomarQtd?: string // "1", "10"
-  forma?: string // "comprimido(s)", "ml", "gota(s)", "cápsula(s)"
-  via?: string // "oral", "IM", "IV", "sublingual"
-  intervaloHoras?: string // "8", "12"
-  dias?: string // "7", "3", "10"
-  observacao?: string // texto livre
-}
+import { ReceitaMedicamento } from '@/services/medicamentoService'
 
 export type ReceitaPayload = {
   paciente_nome: string
@@ -18,9 +7,9 @@ export type ReceitaPayload = {
   medico_nome: string
   crm: string
   especialidade: string
-  // Agora aceita itens estruturados OU o formato antigo
-  medicacoes: MedicacaoItem[] | string[] | string
-  headerLeftDataUri?: string // ex.: "data:image/png;base64,..."
+  medicacoes: ReceitaMedicamento[]
+  // NOVO: imagens em data URI (base64)
+  headerLeftDataUri?: string // ex.: "data:image/png;base64,...."
   headerRightDataUri?: string // opcional
   assinaturaDataUri?: string // opcional
 }
@@ -88,7 +77,21 @@ function renderMedicacoes(data: ReceitaPayload): string {
 }
 
 export function renderReceituarioHTML(data: ReceitaPayload) {
-  const medsHTML = renderMedicacoes(data)
+  var meds = ''
+  data.medicacoes.forEach(element => {
+    let underscores = '_'.repeat(
+      Math.max(
+        0,
+        70 -
+          escapeHtml(element.medicamento.nome).length -
+          `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length
+      )
+    )
+    meds += `<li>${escapeHtml(element.medicamento.nome)}${underscores}${
+      element.duracao
+    } ${escapeHtml(element.unidade_medida)}</li>`
+    meds += `<span>${escapeHtml(element.observacao)}</span>`
+  })
 
   const leftImg = data.headerLeftDataUri
     ? `<img src="${data.headerLeftDataUri}" style="height:100px; object-fit:contain;">`
@@ -119,23 +122,9 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
     .label { font-weight: bold; }
     .box { border: 1px solid #000; min-height: 110mm; padding: 12px 12px 8px; margin-top: 8px; }
     .small { font-size: 14px; }
-    .sig-wrap { display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
-    .sig { text-align:center; margin-top: 20px; }
-    .sig .line { margin: 6px 0 4px 0; border-top: 1px solid #000; }
-
-    /* Estilos dos campos sublinhados */
-    .u {
-      display: inline-block;
-      padding: 0 4px 2px;
-      border-bottom: 1px solid #000;
-      line-height: 1.2;
-      vertical-align: baseline;
-    }
-
-    /* Blocos de prescrição */
-    .rx-item { margin-bottom: 12px; }
-    .rx-line { font-size: 13px; line-height: 1.6; text-align: justify; }
-    .rx-num { font-weight: bold; margin-right: 6px; }
+    .sig-wrap { display:flex; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; align-items: center; justify-content: center;}
+    .sig { text-align:center; margin-top: 28px; }
+    .sig .line { margin: 0 0 4px 0; border-top: 1px solid #000; }
   </style>
 </head>
 <body>
@@ -175,7 +164,9 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
       ${assinaturaImg}
       <div class="line"></div>
       <div class="small muted">Assinatura do Médico</div>
-      <div class="small muted">Carimbo (Nome, CRM, Especialidade)</div>
+      <div class="small muted">Carimbo (${escapeHtml(
+        data.medico_nome
+      )}, ${escapeHtml(data.crm)}, ${escapeHtml(data.especialidade)})</div>
     </div>
   </div>
 

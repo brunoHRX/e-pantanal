@@ -21,6 +21,7 @@ export const data = {
         { title: "Fila de Espera", url: "/fila-espera" },
         { title: "Farmácia",     url: "/farmacia" },
         { title: "Histórico",    url: "/historico" },
+        { title: "Relatórios",    url: "/relatorios" },
         { title: "Configurações",     url: "/configuracoes" },
       ],
     },

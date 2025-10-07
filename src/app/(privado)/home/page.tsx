@@ -74,26 +74,26 @@ export default function HomePage() {
       id: 'inicio',
       title: 'Início rápido',
       items: [
-        {
-          id: 1,
-          title: 'Nova Triagem',
-          description: 'Registrar ficha de triagem inicial do paciente.',
-          icon: <ClipboardList className="h-10 w-10 text-teal-600" />,
-          href: '/triagem/novo'
-        },
-        {
-          id: 2,
-          title: 'Atendimento Odontológico',
-          description: 'Preencher ficha odontológica e acessar odontograma.',
-          icon: <Smile className="h-10 w-10 text-blue-600" />,
-          href: '/atendimentos/novo/odontologia'
-        },
+        // {
+        //   id: 1,
+        //   title: 'Nova Triagem',
+        //   description: 'Registrar ficha de triagem inicial do paciente.',
+        //   icon: <ClipboardList className="h-10 w-10 text-teal-600" />,
+        //   href: '/triagem/novo'
+        // },
+        // {
+        //   id: 2,
+        //   title: 'Atendimento Odontológico',
+        //   description: 'Preencher ficha odontológica e acessar odontograma.',
+        //   icon: <Smile className="h-10 w-10 text-blue-600" />,
+        //   href: '/atendimentos/novo/odontologia'
+        // },
         {
           id: 3,
-          title: 'Atendimento Convencional',
+          title: 'Atendimento',
           description: 'Procedimentos médicos, CIDs e evolução clínica.',
           icon: <Stethoscope className="h-10 w-10 text-indigo-600" />,
-          href: '/atendimentos/novo/clinico'
+          href: '/atendimento'
         },
         {
           id: 4,
@@ -123,13 +123,13 @@ export default function HomePage() {
           icon: <ListChecks className="h-10 w-10 text-amber-700" />,
           href: '/triagem'
         },
-        {
-          id: 7,
-          title: 'Atendimentos',
-          description: 'Acompanhe atendimentos em andamento e finalizados.',
-          icon: <ClipboardPlus className="h-10 w-10 text-cyan-700" />,
-          href: '/atendimentos'
-        }
+        // {
+        //   id: 7,
+        //   title: 'Atendimentos',
+        //   description: 'Acompanhe atendimentos em andamento e finalizados.',
+        //   icon: <ClipboardPlus className="h-10 w-10 text-cyan-700" />,
+        //   href: '/atendimentos'
+        // }
       ]
     },
     {
@@ -163,14 +163,14 @@ export default function HomePage() {
           icon: <Pill className="h-10 w-10 text-rose-700" />,
           href: '/farmacia'
         },
-        {
-          id: 11,
-          title: 'Estoque (Materiais)',
-          description: 'Entrada/saída e níveis de estoque.',
-          icon: <Boxes className="h-10 w-10 text-emerald-700" />,
-          // ajuste se você usar rota diferente (ex.: /farmacia/estoque)
-          href: '/estoque'
-        }
+        // {
+        //   id: 11,
+        //   title: 'Estoque (Materiais)',
+        //   description: 'Entrada/saída e níveis de estoque.',
+        //   icon: <Boxes className="h-10 w-10 text-emerald-700" />,
+        //   // ajuste se você usar rota diferente (ex.: /farmacia/estoque)
+        //   href: '/estoque'
+        // }
       ]
     },
     {

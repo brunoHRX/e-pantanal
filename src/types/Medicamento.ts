@@ -7,6 +7,7 @@ export type Medicamento = {
 export type ReceitaMedicamento = { 
     medicamento: Medicamento,
     frequencia: string,
+    unidade_medida: string,
     duracao: number,
     observacao: string,
 }

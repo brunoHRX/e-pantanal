@@ -35,3 +35,10 @@ export type ToothSelection = {
     procedures: Procedimento[]
     notes?: string
 }
+
+export type EncaminhamentoMedico = {
+    atendimentoId: number,
+    especialidadeId: number,
+    motivo?: string,
+    pacienteId: number
+}

@@ -1,11 +1,13 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import AppSidebar from "./AppSidebar";
 import TopNav from "./TopNav";
 import { data } from "@/lib/data";
+import { ValidadeBearer } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -34,8 +36,21 @@ function LayoutWithSidebar({ children }: ClientLayoutProps) {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter()
 
-  // Public route (login) without sidebar
+  useEffect(() => {
+    async function checkToken() {
+      const valido = await ValidadeBearer();
+      if (!valido) {
+        localStorage.removeItem("userData");
+        router.push("/login");
+      }
+    }
+    checkToken()
+  }, [router]);
+  
+  
+
   if (pathname === "/login") {
     return <>{children}</>;
   }

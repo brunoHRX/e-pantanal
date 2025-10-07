@@ -43,9 +43,9 @@ import {
 } from '@/services/especialidadeService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
-import { safeDateLabel } from '@/utils/functions'
+import { generateAndDownload, safeDateLabel, safeDateTimeLabel } from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
-import { ToothSelection, finalizarAtendimento } from '@/services/atendimentoService'
+import { ToothSelection, finalizarAtendimento, EncaminhamentoMedico, encaminharAtendimento } from '@/services/atendimentoService'
 
 import Odontograma from '../componentes/Odontograma'
 
@@ -67,6 +67,9 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
+  const [userName, setUserName] = useState("");
+  const [userCRM, setCRM] = useState("");
+  const [userEspecialidadeDesc, setEspecialidadeDesc] = useState("");
   const [userTipoAtendimento, setUserTipoAtendimento] = useState<string>("");
   const [userEspecialidade, setUserEspecialidade] = useState<number>();
   // --------------------
@@ -277,6 +280,15 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   useEffect(() => {    
     if(!idFila) return
+    const storedUser = localStorage.getItem("userData");
+    console.log(storedUser);
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserName(user.usuario.toUpperCase());
+      setCRM(user.crm.toUpperCase());
+      setEspecialidadeDesc(user.crm.toUpperCase());
+    }
     handleSearch()
   }, [idFila, userEspecialidade])
 
@@ -391,9 +403,49 @@ export default function AtendimentoConvencionalPage() {
     return `${mm}:${ss}`
   }
 
-  const handleImprimirReceita = () => {
-    // TODO: integrar com rota/serviço que aplica o template e retorna PDF/print
-    toast.message('Imprimir Receita (conectar ao template)')
+  const handleImprimirReceita = async () => {
+    try {
+      if (atendimento) {
+        
+        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
+          data_hora: safeDateTimeLabel(new Date().toISOString()),
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM,
+          especialidade: especialidadedDesc,
+          medicacoes: prescricoes
+        }
+        // console.log(prescricoes);
+        await generateAndDownload('/api/receituario-html', payload, 'receituario')
+        toast.message('Receituário gerado com sucesso!')
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar Receituário')
+    }
+  }
+
+  const handleImprimirDocumento = async () => {
+    try {
+      if (atendimento) {
+        
+        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
+          data_hora: safeDateTimeLabel(new Date().toISOString()),
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM,
+          especialidade: especialidadedDesc
+        }
+        // console.log(prescricoes);
+        await generateAndDownload('/api/documento-html', payload, 'documento')
+        toast.message('Documento gerado com sucesso!')
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar Documento')
+    }
   }
 
   const handleFinalizar = async () => {
@@ -448,9 +500,24 @@ export default function AtendimentoConvencionalPage() {
 
   const handleImprimirAtestado = async () => {
     try {
-      // TODO: chamar rota/serviço que gera o PDF do Atestado
-      // Ex.: fetch('/api/atestado', { method: 'POST', body: JSON.stringify(payload) })
-      toast.message('Imprimir Atestado (conectar ao template)')
+      if (atendimento) {
+        const entrada = new Date(atendimento.entrada)
+        entrada.setDate(entrada.getDate() + 1)
+
+        const inicio_afastamento = safeDateLabel(entrada.toISOString())
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_atendimento: safeDateLabel(atendimento.entrada), // dd/mm/aaaa
+          // dias_afastamento: '3',
+          inicio_afastamento: inicio_afastamento,
+          // diagnostico: 'Gripe viral',
+          // cid: 'J11',
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM
+        }
+        await generateAndDownload('/api/atestado-html', payload, 'atestado')
+        toast.message('Atestado gerado com sucesso!')
+      }
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao imprimir atestado.')
     }
@@ -458,10 +525,21 @@ export default function AtendimentoConvencionalPage() {
 
   const handleEncaminhar = async () => {
     try {
-      setEncOpen(true) // <- abre o modal
-      toast.message('Encaminhar (abrir modal/fluxo de encaminhamento)')
+      setEncOpen(true)
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao encaminhar.')
+    }
+  }
+  
+  const handleEncaminhamentoMedico = async (encaminhamento: EncaminhamentoMedico) => {
+    setCarregando(true)
+    try {
+      await encaminharAtendimento(encaminhamento)
+      toast.success('Atendimento encaminhado!')
+    } catch {
+      toast.error('Encaminhamento do atendimento falhou!')
+    } finally {
+      setCarregando(false)
     }
   }
 
@@ -877,7 +955,7 @@ export default function AtendimentoConvencionalPage() {
                 </div>
 
                 {/* Exames (fica embaixo) */}
-                <div>
+                {/* <div>
                   <Label className="mb-2 block">Solicitar Exames</Label>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {exames.map(ex => (
@@ -893,7 +971,7 @@ export default function AtendimentoConvencionalPage() {
                       </label>
                     ))}
                   </div>
-                </div>
+                </div> */}
               </div>
             </section>
 
@@ -919,6 +997,16 @@ export default function AtendimentoConvencionalPage() {
                 >
                   <FileText className="h-4 w-4" />
                   Imprimir Atestado
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleImprimirDocumento}
+                  className="gap-2 transition-colors hover:bg-gray-500 hover:text-gray-300"
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir Documento
                 </Button>
 
                 <Button
@@ -963,11 +1051,7 @@ export default function AtendimentoConvencionalPage() {
         pacienteId={atendimento?.paciente?.id ?? 0}
         especialidades={especialidades}
         onConfirm={async payload => {
-          // Aqui você pluga seu backend/serviço real:
-          // await encaminharService.criar(payload)
-
-          console.log('Encaminhamento ->', payload)
-          toast.success('Encaminhamento enviado!')
+          handleEncaminhamentoMedico(payload);
         }}
       />
     </div>

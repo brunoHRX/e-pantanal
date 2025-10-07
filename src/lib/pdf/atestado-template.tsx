@@ -1,10 +1,7 @@
 export type AtestadoPayload = {
   paciente_nome: string
   data_atendimento: string
-  dias_afastamento: string
   inicio_afastamento: string
-  diagnostico?: string
-  cid?: string
   medico_nome: string
   crm: string
   assinaturaDataUri?: string
@@ -72,13 +69,13 @@ export function renderAtestadoHTML(data: AtestadoPayload) {
         data.data_atendimento
       )}</strong>, 
       e necessita afastamento de suas atividades por 
-      <strong>${escapeHtml(data.dias_afastamento)}</strong> dia(s), a partir de 
+      <strong>______</strong> dia(s), a partir de 
       <strong>${escapeHtml(data.inicio_afastamento)}</strong>.
     </div>
 
     <div class="content" style="margin-top:20px;">
-      Diagnóstico: ${escapeHtml(data.diagnostico ?? '____________________')} 
-      &nbsp;&nbsp; CID: ${escapeHtml(data.cid ?? '______')}
+      Diagnóstico: ____________________ 
+      &nbsp;&nbsp; CID: ______
     </div>
 
     <div class="small" style="margin-top:4px;">
@@ -92,7 +89,7 @@ export function renderAtestadoHTML(data: AtestadoPayload) {
     <div style="margin-top:8px;">
       _____________________________________
     </div>
-    <div>${escapeHtml(data.medico_nome)} - CRM ${escapeHtml(data.crm)}</div>
+    <div>${escapeHtml(data.medico_nome)} - ${escapeHtml(data.crm)}</div>
   </div>
 
   <div class="content" style="margin-top:40px;">
