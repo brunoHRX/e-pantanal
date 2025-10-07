@@ -1,3 +1,16 @@
+export type MedicacaoItem = {
+  nome?: string // "Dipirona 500mg"
+  tipoUso?: string // "contínuo", "eventual", "noturno", etc.
+  quantidade?: string // "20", "1", "5"
+  unidade?: string // "comprimidos", "ml", "caixas", "gotas"
+  tomarQtd?: string // "1", "10"
+  forma?: string // "comprimido(s)", "ml", "gota(s)", "cápsula(s)"
+  via?: string // "oral", "IM", "IV", "sublingual"
+  intervaloHoras?: string // "8", "12"
+  dias?: string // "7", "3", "10"
+  observacao?: string // texto livre
+}
+
 export type ReceitaPayload = {
   paciente_nome: string
   data_nascimento: string
@@ -5,19 +18,77 @@ export type ReceitaPayload = {
   medico_nome: string
   crm: string
   especialidade: string
-  medicacoes: string[] | string
-  // NOVO: imagens em data URI (base64)
-  headerLeftDataUri?: string // ex.: "data:image/png;base64,...."
+  // Agora aceita itens estruturados OU o formato antigo
+  medicacoes: MedicacaoItem[] | string[] | string
+  headerLeftDataUri?: string // ex.: "data:image/png;base64,..."
   headerRightDataUri?: string // opcional
-  assinaturaDataUri?: string // opcional (imagem de assinatura)
+  assinaturaDataUri?: string // opcional
+}
+
+function U(value?: string, min = 120): string {
+  // Campo sublinhado: se vier valor, mostra o valor sublinhado; senão, linha vazia.
+  const display = (value ?? '').trim()
+  // largura mínima em px para manter o "traço" visível mesmo preenchido
+  return `<span class="u" style="min-width:${min}px;">${escapeHtml(
+    display
+  )}</span>`
+}
+
+function renderMedicacaoItem(item: MedicacaoItem, idx: number): string {
+  const nome = U(item.nome, 220)
+  const tipoUso = U(item.tipoUso, 140)
+  const quantidade = U(item.quantidade, 60)
+  const unidade = U(item.unidade, 140)
+  const tomarQtd = U(item.tomarQtd, 60)
+  const forma = U(item.forma, 140)
+  const via = U(item.via, 140)
+  const intervaloHoras = U(item.intervaloHoras, 60)
+  const dias = U(item.dias, 60)
+  const observacao = U(item.observacao, 420)
+
+  return `
+  <div class="rx-item">
+    <div class="rx-line">
+      <span class="rx-num">${idx + 1}.</span>
+      <span>Nome da Medicação</span> ${nome}
+      <span>&nbsp;(TIPO DE USO)</span> ${tipoUso}
+      <span>&nbsp;QTD:</span> ${quantidade}
+      <span>&nbsp;</span>(${unidade})
+      <span>.</span>
+    </div>
+
+    <div class="rx-line">
+      <span>Tomar</span> ${tomarQtd} <span>&nbsp;</span>(${forma})
+      <span>, por via</span> ${via}
+      <span>, a cada</span> ${intervaloHoras} <span>horas</span>
+      <span>, por</span> ${dias} <span>dias</span>.
+    </div>
+
+    <div class="rx-line">
+      <span>Obs:</span> ${observacao}
+    </div>
+  </div>`
+}
+
+function renderMedicacoes(data: ReceitaPayload): string {
+  // Se vier o formato antigo (string ou string[]), viramos um item simples
+  if (typeof data.medicacoes === 'string') {
+    return renderMedicacaoItem({ nome: data.medicacoes }, 0)
+  }
+  if (
+    Array.isArray(data.medicacoes) &&
+    typeof data.medicacoes[0] === 'string'
+  ) {
+    const arr = data.medicacoes as string[]
+    return arr.map((s, i) => renderMedicacaoItem({ nome: s }, i)).join('')
+  }
+  // Caso estruturado
+  const items = (data.medicacoes as MedicacaoItem[]) ?? []
+  return items.map((m, i) => renderMedicacaoItem(m, i)).join('')
 }
 
 export function renderReceituarioHTML(data: ReceitaPayload) {
-  const meds = Array.isArray(data.medicacoes)
-    ? data.medicacoes
-        .map((m, i) => `<li>${i + 1}. ${escapeHtml(m)}</li>`)
-        .join('')
-    : `<li>${escapeHtml(String(data.medicacoes ?? ''))}</li>`
+  const medsHTML = renderMedicacoes(data)
 
   const leftImg = data.headerLeftDataUri
     ? `<img src="${data.headerLeftDataUri}" style="height:100px; object-fit:contain;">`
@@ -38,9 +109,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
   <style>
     @page { size: A4; margin: 20mm; }
     body { font-family: Arial, Helvetica, sans-serif; color: #111; }
-    .headerband {
-      display: grid; grid-template-columns: 120px 1fr 120px; align-items:center; gap: 16px;
-    }
+    .headerband { display: grid; grid-template-columns: 120px 1fr 120px; align-items:center; gap: 16px; }
     .center { text-align:center; }
     .muted { color:#555; }
     h1 { margin: 4px 0 0 0; font-size: 18px; }
@@ -48,11 +117,25 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
     .line { border-top: 1px solid #000; margin: 10px 0 16px 0; }
     .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 10px; }
     .label { font-weight: bold; }
-    .box { border: 1px solid #000; min-height: 110mm; padding: 10px; margin-top: 8px; }
+    .box { border: 1px solid #000; min-height: 110mm; padding: 12px 12px 8px; margin-top: 8px; }
     .small { font-size: 14px; }
-    .sig-wrap { display:grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; }
-    .sig { text-align:center; margin-top: 28px; }
-    .sig .line { margin: 0 0 4px 0; border-top: 1px solid #000; }
+    .sig-wrap { display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+    .sig { text-align:center; margin-top: 20px; }
+    .sig .line { margin: 6px 0 4px 0; border-top: 1px solid #000; }
+
+    /* Estilos dos campos sublinhados */
+    .u {
+      display: inline-block;
+      padding: 0 4px 2px;
+      border-bottom: 1px solid #000;
+      line-height: 1.2;
+      vertical-align: baseline;
+    }
+
+    /* Blocos de prescrição */
+    .rx-item { margin-bottom: 12px; }
+    .rx-line { font-size: 13px; line-height: 1.6; text-align: justify; }
+    .rx-num { font-weight: bold; margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -84,9 +167,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
 
   <div class="label">Medicações / Orientações:</div>
   <div class="box">
-    <ul class="small" style="margin:0; padding-left: 16px;">
-      ${meds}
-    </ul>
+    ${medsHTML}
   </div>
 
   <div class="sig-wrap">
