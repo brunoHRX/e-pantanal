@@ -22,56 +22,35 @@ import {
   DropdownMenuCheckboxItem
 } from '@/components/ui/dropdown-menu'
 import { ChevronsUpDown } from 'lucide-react'
-
-export const FACES = [
-  { key: 'V', label: 'Vestibular' },
-  { key: 'M', label: 'Mesial' },
-  { key: 'D', label: 'Distal' },
-  { key: 'L', label: 'Lingual/Palatina' },
-  { key: 'O', label: 'Oclusal/Incisal' }
-] as const
-export type FaceKey = (typeof FACES)[number]['key']
-
-export const PROCEDIMENTOS_ODONTO = [
-  'Exodontia Raiz Residual',
-  'Exodontia de semi inclusos',
-  'Exodontia Inclusos',
-  'Exodontia de decíduos',
-  'Tratamento endodôntico em decíduos',
-  'Sutura',
-  'Anestesia Dental',
-  'Radiografia Periapical',
-  'Prescrição medicamentoso',
-  'Remoção de cárie'
-] as const
-export type ProcedimentoOdonto = (typeof PROCEDIMENTOS_ODONTO)[number]
-
-export type ToothSelection = {
-  tooth: number
-  quadrant: number
-  faces: FaceKey[]
-  procedures: ProcedimentoOdonto[]
-  notes?: string
-}
-export type ToothSelectionsMap = Record<number, ToothSelection>
+import { FaceKey, ToothSelection } from '@/services/atendimentoService'
+import { Procedimento } from '@/services/procedimentoService'
 
 function getQuadrantFromFDI(num: number) {
   return Math.floor(num / 10)
 }
 
+type ToothSelectionsMap = {
+  [toothNumber: number]: {
+    faces?: FaceKey[]
+    procedures?: Procedimento[]
+    notes?: string
+  }
+}
+
 export type OdontogramaQuadranteProps = {
   numeros: number[]
   titulo: string
-  /** 'auto' = responsivo; também aceita 'normal' | 'grande' para forçar */
+  procedimentosOdonto: Procedimento[]
   tamanho?: 'auto' | 'normal' | 'grande'
   outlineGroup?: boolean
   selections?: ToothSelectionsMap
-  onChange?: (partial: ToothSelectionsMap) => void
+  onChange?: (partial: ToothSelection) => void
 }
 
 export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
   numeros,
   titulo,
+  procedimentosOdonto = [],
   tamanho = 'auto',
   outlineGroup = false,
   selections = {},
@@ -79,14 +58,22 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
 }) => {
   const [openDente, setOpenDente] = useState<number | null>(null)
   const [tempFaces, setTempFaces] = useState<FaceKey[]>([])
-  const [tempProcs, setTempProcs] = useState<ProcedimentoOdonto[]>([])
+  const [tempProcs, setTempProcs] = useState<Procedimento[]>([])
   const [tempNotes, setTempNotes] = useState('')
 
+  const FACES = [
+    { key: 'V', label: 'Vestibular' },
+    { key: 'M', label: 'Mesial' },
+    { key: 'D', label: 'Distal' },
+    { key: 'L', label: 'Lingual/Palatina' },
+    { key: 'O', label: 'Oclusal/Incisal' }
+  ] as const
+
   const openForTooth = (num: number) => {
-    const sel = selections[num]
-    setTempFaces(sel?.faces || [])
-    setTempProcs(sel?.procedures || [])
-    setTempNotes(sel?.notes || '')
+    const sel = selections[num] || {}
+    setTempFaces(sel.faces || [])
+    setTempProcs(sel.procedures || [])
+    setTempNotes(sel.notes || '')
     setOpenDente(num)
   }
 
@@ -95,7 +82,7 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
       prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]
     )
 
-  const toggleProc = (p: ProcedimentoOdonto) =>
+  const toggleProc = (p: Procedimento) =>
     setTempProcs(prev =>
       prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
     )
@@ -103,14 +90,12 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
   const handleSalvar = () => {
     if (openDente === null) return
     const num = openDente
-    const partial: ToothSelectionsMap = {
-      [num]: {
-        tooth: num,
-        quadrant: getQuadrantFromFDI(num),
-        faces: tempFaces,
-        procedures: tempProcs,
-        notes: tempNotes
-      }
+    const partial: ToothSelection = {
+      tooth: num,
+      quadrant: getQuadrantFromFDI(num),
+      faces: tempFaces,
+      procedures: tempProcs,
+      notes: tempNotes
     }
     onChange?.(partial)
     setOpenDente(null)
@@ -238,13 +223,13 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
                           align="start"
                           className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-64 overflow-auto"
                         >
-                          {PROCEDIMENTOS_ODONTO.map(p => (
+                          {procedimentosOdonto.map(p => (
                             <DropdownMenuCheckboxItem
-                              key={p}
+                              key={p.id}
                               checked={tempProcs.includes(p)}
                               onCheckedChange={() => toggleProc(p)}
                             >
-                              {p}
+                              {p.nome}
                             </DropdownMenuCheckboxItem>
                           ))}
                         </DropdownMenuContent>
@@ -254,11 +239,11 @@ export const OdontogramaQuadrante: React.FC<OdontogramaQuadranteProps> = ({
                         <div className="mt-2 flex flex-wrap gap-2">
                           {tempProcs.map(p => (
                             <Badge
-                              key={p}
+                              key={p.id}
                               variant="secondary"
                               className="gap-1"
                             >
-                              {p}
+                              {p.nome}
                               <button
                                 type="button"
                                 onClick={() => toggleProc(p)}
