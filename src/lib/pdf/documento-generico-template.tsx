@@ -1,5 +1,3 @@
-import { ReceitaMedicamento } from "@/services/medicamentoService"
-
 export type ReceitaPayload = {
   paciente_nome: string
   data_nascimento: string
@@ -7,21 +5,13 @@ export type ReceitaPayload = {
   medico_nome: string
   crm: string
   especialidade: string
-  medicacoes: ReceitaMedicamento[]
   // NOVO: imagens em data URI (base64)
   headerLeftDataUri?: string // ex.: "data:image/png;base64,...."
   headerRightDataUri?: string // opcional
   assinaturaDataUri?: string // opcional (imagem de assinatura)
 }
 
-export function renderReceituarioHTML(data: ReceitaPayload) {
-  var meds = "";
-  data.medicacoes.forEach(element => {
-    let underscores = "_".repeat(Math.max(0, 70 - escapeHtml(element.medicamento.nome).length - `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length))
-    meds += `<li>${escapeHtml(element.medicamento.nome)}${underscores}${element.duracao} ${escapeHtml(element.unidade_medida)}</li>`;
-    meds += `<span>${escapeHtml(element.observacao)}</span>`;
-  });
-  
+export function renderDocumentoHTML(data: ReceitaPayload) {  
   const leftImg = data.headerLeftDataUri
     ? `<img src="${data.headerLeftDataUri}" style="height:100px; object-fit:contain;">`
     : ''
@@ -37,7 +27,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Receituário</title>
+  <title>Documento médico</title>
   <style>
     @page { size: A4; margin: 20mm; }
     body { font-family: Arial, Helvetica, sans-serif; color: #111; }
@@ -66,7 +56,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
       <div class="sub">EXPEDIÇÃO ALMA PANTANEIRA – MÉDICOS DO PANTANAL</div>
       <div class="sub">CNPJ: 25.118.108/0001-04</div>
       <div class="sub">Endereço: Rua Cuiabá – n° 1288 – Centro, Corumbá-MS. CEP – 79330-070</div>
-      <h1>RECEITUÁRIO</h1>
+      <h1>Documento médico</h1>
     </div>
     <div class="right" style="text-align:right;">${rightImg}</div>
   </div>
@@ -85,11 +75,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
     )}</div>
   </div>
 
-  <div class="label">Medicações / Orientações:</div>
   <div class="box">
-    <ul class="small" style="margin:0; padding-left: 16px;">
-      ${meds}
-    </ul>
   </div>
 
   <div class="sig-wrap">

@@ -406,12 +406,8 @@ export default function AtendimentoConvencionalPage() {
   const handleImprimirReceita = async () => {
     try {
       if (atendimento) {
+        
         const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
-        var medicacoesList: string[] = []
-        prescricoes.forEach(element => {
-          const medicacao = element.medicamento.nome.toUpperCase() + " - a cada " + element.frequencia + " horas por " + element.duracao + " dias."
-          medicacoesList.push(medicacao);
-        });
         const payload = {
           paciente_nome: atendimento.paciente.nome,
           data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
@@ -419,13 +415,36 @@ export default function AtendimentoConvencionalPage() {
           medico_nome: 'Dr(a). ' + userName,
           crm: userCRM,
           especialidade: especialidadedDesc,
-          medicacoes: medicacoesList
+          medicacoes: prescricoes
         }
+        // console.log(prescricoes);
         await generateAndDownload('/api/receituario-html', payload, 'receituario')
         toast.message('Receituário gerado com sucesso!')
       }
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao gerar Receituário')
+    }
+  }
+
+  const handleImprimirDocumento = async () => {
+    try {
+      if (atendimento) {
+        
+        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
+          data_hora: safeDateTimeLabel(new Date().toISOString()),
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM,
+          especialidade: especialidadedDesc
+        }
+        // console.log(prescricoes);
+        await generateAndDownload('/api/documento-html', payload, 'documento')
+        toast.message('Documento gerado com sucesso!')
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar Documento')
     }
   }
 
@@ -936,7 +955,7 @@ export default function AtendimentoConvencionalPage() {
                 </div>
 
                 {/* Exames (fica embaixo) */}
-                <div>
+                {/* <div>
                   <Label className="mb-2 block">Solicitar Exames</Label>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {exames.map(ex => (
@@ -952,7 +971,7 @@ export default function AtendimentoConvencionalPage() {
                       </label>
                     ))}
                   </div>
-                </div>
+                </div> */}
               </div>
             </section>
 
@@ -978,6 +997,16 @@ export default function AtendimentoConvencionalPage() {
                 >
                   <FileText className="h-4 w-4" />
                   Imprimir Atestado
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleImprimirDocumento}
+                  className="gap-2 transition-colors hover:bg-gray-500 hover:text-gray-300"
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir Documento
                 </Button>
 
                 <Button

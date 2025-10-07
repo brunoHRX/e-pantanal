@@ -43,6 +43,7 @@ export default function PrescricaoEditor({
     const novo: ReceitaMedicamento = {
       medicamento: m,
       duracao: 0,
+      unidade_medida: '',
       observacao: '',
       frequencia: ''
     }
@@ -59,8 +60,9 @@ export default function PrescricaoEditor({
     const novo: ReceitaMedicamento = {
       medicamento: { id: lastId, nome, ativo: true }, // id temporário local
       duracao: 0,
+      unidade_medida: '',
+      frequencia: '',
       observacao: '',
-      frequencia: ''
     }
     onChange([...value, novo])
     onDirty?.()
@@ -167,8 +169,8 @@ export default function PrescricaoEditor({
                 <Input
                   placeholder="U.M"
                   list={`um-sugestoes-${idx}`}
-                  value={it.observacao}
-                  onChange={e => setField(idx, 'observacao', e.target.value)}
+                  value={it.unidade_medida}
+                  onChange={e => setField(idx, 'unidade_medida', e.target.value)}
                   aria-label="Unidade de Medida (U.M)"
                   title="Unidade de Medida (U.M)"
                 />
@@ -179,7 +181,7 @@ export default function PrescricaoEditor({
                 </datalist>
 
                 <Input
-                  placeholder="Frequência (ex: 8/8h)"
+                  placeholder="Frequência (em horas)"
                   value={it.frequencia}
                   onChange={e => setField(idx, 'frequencia', e.target.value)}
                   aria-label="Frequência"
@@ -196,6 +198,15 @@ export default function PrescricaoEditor({
                 >
                   <X className="h-4 w-4" />
                 </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Observação"
+                    value={it.observacao}
+                    onChange={e => setField(idx, 'observacao', e.target.value)}
+                    aria-label="Observação"
+                    title="Observação"
+                  />
+                </div>
               </div>
             ))}
           </div>

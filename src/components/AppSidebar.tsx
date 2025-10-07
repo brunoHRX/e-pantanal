@@ -23,7 +23,8 @@ import {
   History,
   Clock,
   Pill,
-  Settings
+  Settings,
+  FileText
 } from 'lucide-react'
 import { JSX } from 'react/jsx-runtime'
 
@@ -43,6 +44,7 @@ export default function AppSidebar({ navMain }: AppSidebarProps) {
     Histórico: <History className="w-5 h-5" />,
     'Fila de Espera': <Clock className="w-5 h-5" />,
     Farmácia: <Pill className="w-5 h-5" />,
+    Relatórios: <FileText className="w-5 h-5" />,
     Configurações: <Settings className="w-5 h-5" />
   }
 

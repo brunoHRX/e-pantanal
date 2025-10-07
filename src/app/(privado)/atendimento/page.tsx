@@ -78,7 +78,6 @@ export default function FilaDeAtendimentoPage() {
       const qNorm = stripDiacritics(q)
       const dados = (await getAll()).sort((a, b) => new Date(a.entrada).getTime() - new Date(b.entrada).getTime())
       const filtrados = dados.filter(atendimento => {
-        console.log("atendimento => " + atendimento.id);
         const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase())
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
 
@@ -86,7 +85,7 @@ export default function FilaDeAtendimentoPage() {
         if (atendimento.filas) 
         {
           atendimento.filas.forEach(fila => {
-            if (userFilas.includes(fila.fila.id)) matchFilas = true;
+            if (userFilas.includes(fila.fila.id) && fila.atendido == 0) matchFilas = true;
           });
         }
 
