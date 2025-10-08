@@ -1,5 +1,4 @@
-import { ReceitaMedicamento } from '@/services/medicamentoService'
-
+// mantém sua tipagem
 export type ReceitaPayload = {
   paciente_nome: string
   data_nascimento: string
@@ -7,111 +6,64 @@ export type ReceitaPayload = {
   medico_nome: string
   crm: string
   especialidade: string
-  medicacoes: ReceitaMedicamento[]
-  // NOVO: imagens em data URI (base64)
-  headerLeftDataUri?: string // ex.: "data:image/png;base64,...."
-  headerRightDataUri?: string // opcional
-  assinaturaDataUri?: string // opcional
+  medicacoes: string[] | string
+  headerLeftDataUri?: string
+  headerRightDataUri?: string
+  assinaturaDataUri?: string
 }
 
-function U(value?: string, min = 120): string {
-  // Campo sublinhado: se vier valor, mostra o valor sublinhado; senão, linha vazia.
-  const display = (value ?? '').trim()
-  // largura mínima em px para manter o "traço" visível mesmo preenchido
-  return `<span class="u" style="min-width:${min}px;">${escapeHtml(
-    display
-  )}</span>`
-}
-
-function renderMedicacaoItem(item: MedicacaoItem, idx: number): string {
-  const nome = U(item.nome, 220)
-  const tipoUso = U(item.tipoUso, 140)
-  const quantidade = U(item.quantidade, 60)
-  const unidade = U(item.unidade, 140)
-  const tomarQtd = U(item.tomarQtd, 60)
-  const forma = U(item.forma, 140)
-  const via = U(item.via, 140)
-  const intervaloHoras = U(item.intervaloHoras, 60)
-  const dias = U(item.dias, 60)
-  const observacao = U(item.observacao, 420)
-
-  return `
-  <div class="rx-item">
-    <div class="rx-line">
-      <span class="rx-num">${idx + 1}.</span>
-      <span>Nome da Medicação</span> ${nome}
-      <span>&nbsp;(TIPO DE USO)</span> ${tipoUso}
-      <span>&nbsp;QTD:</span> ${quantidade}
-      <span>&nbsp;</span>(${unidade})
-      <span>.</span>
-    </div>
-
-    <div class="rx-line">
-      <span>Tomar</span> ${tomarQtd} <span>&nbsp;</span>(${forma})
-      <span>, por via</span> ${via}
-      <span>, a cada</span> ${intervaloHoras} <span>horas</span>
-      <span>, por</span> ${dias} <span>dias</span>.
-    </div>
-
-    <div class="rx-line">
-      <span>Obs:</span> ${observacao}
-    </div>
-  </div>`
-}
-
-function renderMedicacoes(data: ReceitaPayload): string {
-  // Se vier o formato antigo (string ou string[]), viramos um item simples
-  if (typeof data.medicacoes === 'string') {
-    return renderMedicacaoItem({ nome: data.medicacoes }, 0)
-  }
-  if (
-    Array.isArray(data.medicacoes) &&
-    typeof data.medicacoes[0] === 'string'
-  ) {
-    const arr = data.medicacoes as string[]
-    return arr.map((s, i) => renderMedicacaoItem({ nome: s }, i)).join('')
-  }
-  // Caso estruturado
-  const items = (data.medicacoes as MedicacaoItem[]) ?? []
-  return items.map((m, i) => renderMedicacaoItem(m, i)).join('')
+// util simples
+function escapeHtml(s: string) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 export function renderReceituarioHTML(data: ReceitaPayload) {
-  var meds = ''
-  data.medicacoes.forEach(element => {
-    let underscores = '_'.repeat(
-      Math.max(
-        0,
-        70 -
-          escapeHtml(element.medicamento.nome).length -
-          `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length
-      )
-    )
-    meds += `<li>${escapeHtml(element.medicamento.nome)}${underscores}${
-      element.duracao
-    } ${escapeHtml(element.unidade_medida)}</li>`
-    meds += `<span>${escapeHtml(element.observacao)}</span>`
-  })
+  // normaliza medicações (string[] | string) e monta <li> com numeração
+  const asList = Array.isArray(data.medicacoes)
+    ? data.medicacoes
+    : [String(data.medicacoes ?? '')]
+
+  const medsHTML = `
+    <ol class="rx-list">
+      ${asList
+        .filter(Boolean)
+        .map(
+          (m, i) => `
+          <li class="rx-item">
+            <span class="num">${i + 1}.</span>
+            <span class="txt">${escapeHtml(String(m))}</span>
+          </li>
+        `
+        )
+        .join('')}
+    </ol>
+  `
 
   const leftImg = data.headerLeftDataUri
-    ? `<img src="${data.headerLeftDataUri}" style="height:100px; object-fit:contain;">`
+    ? `<img src="${data.headerLeftDataUri}" style="max-height:90px; object-fit:contain;" alt="logo">`
     : ''
   const rightImg = data.headerRightDataUri
-    ? `<img src="${data.headerRightDataUri}" style="height:100px; object-fit:contain;">`
+    ? `<img src="${data.headerRightDataUri}" style="max-height:90px; object-fit:contain;" alt="logo">`
     : ''
 
   const assinaturaImg = data.assinaturaDataUri
-    ? `<img src="${data.assinaturaDataUri}" style="max-height:70px; object-fit:contain;">`
+    ? `<img src="${data.assinaturaDataUri}" style="max-height:100px; object-fit:contain; display:block; margin:0 auto 6px;" alt="assinatura">`
     : ''
 
-  return `<!doctype html>
-<html lang="pt-br">
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <title>Receituário</title>
   <style>
     @page { size: A4; margin: 20mm; }
     body { font-family: Arial, Helvetica, sans-serif; color: #111; }
+
     .headerband { display: grid; grid-template-columns: 120px 1fr 120px; align-items:center; gap: 16px; }
     .center { text-align:center; }
     .muted { color:#555; }
@@ -125,6 +77,40 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
     .sig-wrap { display:flex; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; align-items: center; justify-content: center;}
     .sig { text-align:center; margin-top: 28px; }
     .sig .line { margin: 0 0 4px 0; border-top: 1px solid #000; }
+
+    /* ===== NOVO: estilo das linhas de medicação ===== */
+    .rx-list { /* sem marcadores nativos, usamos nossa coluna de número */
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: rx;
+    }
+    .rx-item {
+      display: grid;
+      grid-template-columns: 18px 1fr; /* número fixo + texto flexível */
+      gap: 6px;
+      padding: 6px 0;
+      border-bottom: 1px dotted #999;
+      page-break-inside: avoid; /* evita quebrar um item no meio */
+    }
+    .rx-item:last-child { border-bottom: 0; }
+    .rx-item .num {
+      display: inline-block;
+      width: 18px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: #555;
+      user-select: none;
+    }
+    .rx-item .txt {
+      white-space: pre-wrap;         /* respeita quebras manuais se existirem */
+      overflow-wrap: anywhere;       /* permite quebrar palavras longas */
+      word-break: break-word;
+      hyphens: auto;                 /* hifenização quando disponível */
+      line-height: 1.4;
+      font-size: 14px;
+    }
+    /* =============================================== */
   </style>
 </head>
 <body>
@@ -152,6 +138,7 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
     <div><span class="label">Data/Hora da Emissão:</span> ${escapeHtml(
       data.data_hora
     )}</div>
+    <div><span class="label">CRM:</span> ${escapeHtml(data.crm || '')}</div>
   </div>
 
   <div class="label">Medicações / Orientações:</div>
@@ -175,13 +162,4 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
   </div>
 </body>
 </html>`
-}
-
-function escapeHtml(s: string) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
 }

@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -43,15 +42,24 @@ import {
 } from '@/services/especialidadeService'
 import { AtendimentoFluxo } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
-import { generateAndDownload, safeDateLabel, safeDateTimeLabel } from '@/utils/functions'
+import {
+  generateAndDownload,
+  safeDateLabel,
+  safeDateTimeLabel
+} from '@/utils/functions'
 import { Atendimento } from '@/types/Atendimento'
-import { ToothSelection, finalizarAtendimento, EncaminhamentoMedico, encaminharAtendimento } from '@/services/atendimentoService'
+import {
+  ToothSelection,
+  finalizarAtendimento,
+  EncaminhamentoMedico,
+  encaminharAtendimento
+} from '@/services/atendimentoService'
 
 import Odontograma from '../componentes/Odontograma'
 
 // NOVO: componente de prescrição
 import PrescricaoEditor from '../componentes/PrescricaoEditor'
-
+import { mapReceitaLinhas } from '@/utils/prescricao'
 import EncaminharModal from '@/components/EncaminharModal'
 
 // --------------------
@@ -67,16 +75,16 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 
 export default function AtendimentoConvencionalPage() {
   const router = useRouter()
-  const [userName, setUserName] = useState("");
-  const [userCRM, setCRM] = useState("");
-  const [userEspecialidadeDesc, setEspecialidadeDesc] = useState("");
-  const [userTipoAtendimento, setUserTipoAtendimento] = useState<string>("");
-  const [userEspecialidade, setUserEspecialidade] = useState<number>();
+  const [userName, setUserName] = useState('')
+  const [userCRM, setCRM] = useState('')
+  const [userEspecialidadeDesc, setEspecialidadeDesc] = useState('')
+  const [userTipoAtendimento, setUserTipoAtendimento] = useState<string>('')
+  const [userEspecialidade, setUserEspecialidade] = useState<number>()
   // --------------------
   // Estados principais
   // --------------------
-  
-  const { idFila } = useParams<{ idFila: string }>() 
+
+  const { idFila } = useParams<{ idFila: string }>()
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
   const [evolucao, setEvolucao] = useState<string>('')
@@ -186,17 +194,17 @@ export default function AtendimentoConvencionalPage() {
   )
   const addOdonto = (tooth: ToothSelection) => {
     setOdontoSelections(prev => {
-        const exists = prev.some(
-          p => p.tooth === tooth.tooth && p.quadrant === tooth.quadrant
+      const exists = prev.some(
+        p => p.tooth === tooth.tooth && p.quadrant === tooth.quadrant
+      )
+
+      if (exists) {
+        return prev.map(p =>
+          p.tooth === tooth.tooth && p.quadrant === tooth.quadrant ? tooth : p
         )
-    
-        if (exists) {
-          return prev.map(p =>
-            p.tooth === tooth.tooth && p.quadrant === tooth.quadrant ? tooth : p
-          )
-        }
-    
-        return [...prev, tooth]
+      }
+
+      return [...prev, tooth]
     })
     setDirty(true)
   }
@@ -209,11 +217,14 @@ export default function AtendimentoConvencionalPage() {
     )
     setDirty(true)
   }
-  
-  const removeOdontoProcedimento = (tooth: ToothSelection, toothProc: number) => {
+
+  const removeOdontoProcedimento = (
+    tooth: ToothSelection,
+    toothProc: number
+  ) => {
     setOdontoSelections(prev => {
       const arr = Array.isArray(prev) ? prev : []
-  
+
       const next = arr.map(p => {
         if (p.tooth === tooth.tooth && p.quadrant === tooth.quadrant) {
           return {
@@ -223,9 +234,9 @@ export default function AtendimentoConvencionalPage() {
         }
         return p
       })
-  
+
       return next
-    })  
+    })
     setDirty(true)
   }
   // --------------------
@@ -278,27 +289,27 @@ export default function AtendimentoConvencionalPage() {
   // --------------------
   // Carregamento inicial
   // --------------------
-  useEffect(() => {    
-    if(!idFila) return
-    const storedUser = localStorage.getItem("userData");
-    console.log(storedUser);
-    
+  useEffect(() => {
+    if (!idFila) return
+    const storedUser = localStorage.getItem('userData')
+    console.log(storedUser)
+
     if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setUserName(user.usuario.toUpperCase());
-      setCRM(user.crm.toUpperCase());
-      setEspecialidadeDesc(user.crm.toUpperCase());
+      const user = JSON.parse(storedUser)
+      setUserName(user.usuario.toUpperCase())
+      setCRM(user.crm.toUpperCase())
+      setEspecialidadeDesc(user.crm.toUpperCase())
     }
     handleSearch()
   }, [idFila, userEspecialidade])
 
   const handleSearch = async () => {
-    setCarregando(true)    
-    const storedUser = localStorage.getItem("userData");    
+    setCarregando(true)
+    const storedUser = localStorage.getItem('userData')
     if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setUserTipoAtendimento(user.tipo_atendimento);
-      setUserEspecialidade(user.especialidade_id);
+      const user = JSON.parse(storedUser)
+      setUserTipoAtendimento(user.tipo_atendimento)
+      setUserEspecialidade(user.especialidade_id)
     }
 
     try {
@@ -318,14 +329,19 @@ export default function AtendimentoConvencionalPage() {
       setExames(e)
       setEspecialidades(esp)
       if (userEspecialidade && userTipoAtendimento) {
-        const selecionados = p.filter(proc => proc.especialidade_id == userEspecialidade)
-        
-        const idEspecialidade = userTipoAtendimento === "medico" ? 1 : 2
-        const relacionados = p.filter(proc => proc.especialidade_id == idEspecialidade)
+        const selecionados = p.filter(
+          proc => proc.especialidade_id == userEspecialidade
+        )
 
-        const unicos = [...selecionados, ...relacionados]
-          .filter((v, i, arr) => arr.findIndex(o => o.id === v.id) === i)
-          
+        const idEspecialidade = userTipoAtendimento === 'medico' ? 1 : 2
+        const relacionados = p.filter(
+          proc => proc.especialidade_id == idEspecialidade
+        )
+
+        const unicos = [...selecionados, ...relacionados].filter(
+          (v, i, arr) => arr.findIndex(o => o.id === v.id) === i
+        )
+
         setSelectedProceds(unicos)
       }
     } catch (err) {
@@ -405,22 +421,27 @@ export default function AtendimentoConvencionalPage() {
 
   const handleImprimirReceita = async () => {
     try {
-      if (atendimento) {
-        
-        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
-        const payload = {
-          paciente_nome: atendimento.paciente.nome,
-          data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
-          data_hora: safeDateTimeLabel(new Date().toISOString()),
-          medico_nome: 'Dr(a). ' + userName,
-          crm: userCRM,
-          especialidade: especialidadedDesc,
-          medicacoes: prescricoes
-        }
-        // console.log(prescricoes);
-        await generateAndDownload('/api/receituario-html', payload, 'receituario')
-        toast.message('Receituário gerado com sucesso!')
+      if (!atendimento) return
+
+      const especialidadedDesc =
+        especialidades.find(e => e.id === userEspecialidade)?.nome ?? ''
+
+      // transforma os itens de prescrição em linhas prontas (string[])
+      const linhas = mapReceitaLinhas(prescricoes)
+
+      const payload = {
+        paciente_nome: atendimento.paciente.nome,
+        data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
+        data_hora: safeDateTimeLabel(new Date().toISOString()),
+        medico_nome: 'Dr(a). ' + userName,
+        crm: userCRM,
+        especialidade: especialidadedDesc,
+        // AGORA: array de strings pronto pro template
+        medicacoes: linhas
       }
+
+      await generateAndDownload('/api/receituario-html', payload, 'receituario')
+      toast.message('Receituário gerado com sucesso!')
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao gerar Receituário')
     }
@@ -429,8 +450,8 @@ export default function AtendimentoConvencionalPage() {
   const handleImprimirDocumento = async () => {
     try {
       if (atendimento) {
-        
-        const especialidadedDesc = especialidades.find(e => e.id === userEspecialidade)?.nome ?? ""
+        const especialidadedDesc =
+          especialidades.find(e => e.id === userEspecialidade)?.nome ?? ''
         const payload = {
           paciente_nome: atendimento.paciente.nome,
           data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
@@ -449,7 +470,6 @@ export default function AtendimentoConvencionalPage() {
   }
 
   const handleFinalizar = async () => {
-    
     if (!atendimento) return
 
     // montar itens de prescrição detalhados
@@ -461,9 +481,9 @@ export default function AtendimentoConvencionalPage() {
       cids: selectedCids.map(p => p.id),
       medicamentos: prescricoes,
       exames: selectedExames.map(p => p.id),
-      procedimentosOdontologicos: odontoSelections,
+      procedimentosOdontologicos: odontoSelections
     }
-    
+
     const vazio =
       !evolucao.trim() &&
       selectedProceds.length === 0 &&
@@ -530,8 +550,10 @@ export default function AtendimentoConvencionalPage() {
       toast.error(e?.message ?? 'Falha ao encaminhar.')
     }
   }
-  
-  const handleEncaminhamentoMedico = async (encaminhamento: EncaminhamentoMedico) => {
+
+  const handleEncaminhamentoMedico = async (
+    encaminhamento: EncaminhamentoMedico
+  ) => {
     setCarregando(true)
     try {
       await encaminharAtendimento(encaminhamento)
@@ -840,9 +862,11 @@ export default function AtendimentoConvencionalPage() {
                   <div className="w-full max-w-full">
                     <Odontograma
                       value={odontoSelections}
-                      procedimentosOdontologicos = {procedimentos.filter(proc => proc.especialidade_id == 2)}
+                      procedimentosOdontologicos={procedimentos.filter(
+                        proc => proc.especialidade_id == 2
+                      )}
                       onChange={v => {
-                        addOdonto(v);
+                        addOdonto(v)
                         setDirty(true)
                       }}
                     />
@@ -879,9 +903,7 @@ export default function AtendimentoConvencionalPage() {
                               variant="outline"
                               size="sm"
                               className="h-6 px-2"
-                              onClick={() =>
-                                removeOdonto(sel)
-                              }
+                              onClick={() => removeOdonto(sel)}
                             >
                               Limpar dente
                             </Button>
@@ -939,7 +961,7 @@ export default function AtendimentoConvencionalPage() {
             {/* Section — Prescrição & Exames (vertical: Prescrição acima, Exames abaixo) */}
             <section className="border rounded-lg">
               <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
-                Prescrição & Exames
+                Receituário & Exames
               </div>
 
               {/* Stack vertical */}
@@ -1051,7 +1073,7 @@ export default function AtendimentoConvencionalPage() {
         pacienteId={atendimento?.paciente?.id ?? 0}
         especialidades={especialidades}
         onConfirm={async payload => {
-          handleEncaminhamentoMedico(payload);
+          handleEncaminhamentoMedico(payload)
         }}
       />
     </div>

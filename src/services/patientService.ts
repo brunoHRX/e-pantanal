@@ -3,6 +3,9 @@ import { Patient } from "@/types/Patient";
 import { TriagemFormData } from "@/types/Triagem";
 import { API_BASE, headers } from "@/utils/constants";
 
+
+
+
 export async function getAllPatients(): Promise<Patient[]> {
   const res = await fetch(`${API_BASE}/api/Pacientes`, {
     headers: {
