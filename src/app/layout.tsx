@@ -6,8 +6,14 @@ import { Toaster } from '@/components/ui/sonner'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body>
+    <html lang="pt-BR" className="h-full">
+      <body
+        className="
+      min-h-screen
+      supports-[height:100dvh]:min-h-[100dvh]
+      overflow-x-hidden
+    "
+      >
         <ClientLayout>
           {children}
           <Toaster richColors position="top-right" />

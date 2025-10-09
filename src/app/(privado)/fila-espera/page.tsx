@@ -18,7 +18,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import {
   Search,
@@ -55,7 +58,6 @@ import { toast } from 'sonner'
 
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 import { QueueLegend } from '@/components/QueueLegend'
-import { stat } from 'fs'
 import { ActiveProfessionalsBar } from '@/components/ActiveProfessionalsBar'
 
 export default function FilaEsperaPage() {
@@ -99,6 +101,7 @@ export default function FilaEsperaPage() {
 
   useEffect(() => {
     runSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filtroEspecialidades, filtroSexo, filtroEstado])
 
   async function runSearch() {
@@ -135,7 +138,7 @@ export default function FilaEsperaPage() {
         const matchEstado =
           filtroEstado.length === 0 ||
           filtroEstado.map(e => e.toLowerCase()).includes(estadoAtual)
-        // console.log('Paciente:', atendimento.paciente?.nome, 'Query:', matchQuery, 'Especialidade:', matchEspecialidade, 'Sexo:', matchSexo, 'Estado:', matchEstado);
+
         return matchQuery && matchEspecialidade && matchSexo && matchEstado
       })
       setResults(filtrados.map(p => ({ ...p })))
@@ -182,7 +185,7 @@ export default function FilaEsperaPage() {
 
   async function loadProfissionaisAtivos() {
     try {
-      const profissionaisAtivos = await getProfissionais();
+      const profissionaisAtivos = await getProfissionais()
       setProfissionais(profissionaisAtivos)
     } catch (err) {
       toast.error((err as Error).message)
@@ -191,26 +194,35 @@ export default function FilaEsperaPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* HEADER: padrão Painel de Pacientes */}
+    <div className="p-4 md:p-6 overflow-x-hidden">
+      {/* PROFISSIONAIS ATIVOS (colapsável) */}
       <ActiveProfessionalsBar
-        profissionais={profissionais} // seu array vindo do backend
-        defaultOpen={true} // inicia aberto (opcional)
+        profissionais={profissionais}
+        defaultOpen={true}
         className="mb-4"
       />
+
+      {/* HEADER: padrão Painel de Pacientes */}
       <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl font-bold">Fila de Espera</CardTitle>
+        {/* Header empilhável no mobile */}
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-xl sm:text-2xl font-bold">
+            Fila de Espera
+          </CardTitle>
 
           {/* Botão de Filtros - Dropdown com checkboxes */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label="Abrir filtros">
+              <Button
+                variant="outline"
+                aria-label="Abrir filtros"
+                className="w-full sm:w-auto"
+              >
                 <Filter className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Filtros</span>
+                <span>Filtros</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64" align="end">
+            <DropdownMenuContent className="w-72 sm:w-64" align="end">
               <DropdownMenuLabel>Especialidades</DropdownMenuLabel>
               {especialidades.map(esp => (
                 <DropdownMenuCheckboxItem
@@ -279,8 +291,8 @@ export default function FilaEsperaPage() {
         </CardHeader>
 
         {/* Barra de busca (padrão do painel) */}
-        <CardContent className="flex flex-col gap-2 md:flex-row">
-          <div className="relative flex-1">
+        <CardContent className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1 min-w-0">
             <Input
               placeholder="Pesquise por nome, CPF, CNS ou data de nascimento"
               value={query}
@@ -299,12 +311,16 @@ export default function FilaEsperaPage() {
             )}
           </div>
 
-          <Button onClick={runSearch} className="flex items-center">
+          <Button
+            onClick={runSearch}
+            className="w-full sm:w-auto flex items-center"
+          >
             <Search className="mr-1 h-4 w-4" />
             Buscar
           </Button>
         </CardContent>
 
+        {/* Total + por especialidade (com wrap) */}
         <CardContent className="pt-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
             {filas?.total != null ? (
@@ -316,8 +332,9 @@ export default function FilaEsperaPage() {
                   </span>
                 </span>
 
-                {/* separador sutil */}
-                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  •
+                </span>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {filas?.filas?.length ? (
@@ -356,12 +373,15 @@ export default function FilaEsperaPage() {
         <div className="space-y-2">
           {results.map(p => (
             <Card key={p.id}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-sm text-muted-foreground shrink-0">
+              <CardContent className="p-3 sm:p-4 space-y-2">
+                {/* Linha superior (mobile empilha, desktop em linha) */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  {/* Bloco à esquerda: hora, nome, prioridade */}
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <span className="text-xs sm:text-sm text-muted-foreground shrink-0">
                       {safeDateTimeLabel(p.entrada)}
                     </span>
+
                     <span
                       className="font-semibold truncate"
                       title={p.paciente.nome}
@@ -371,138 +391,87 @@ export default function FilaEsperaPage() {
 
                     {p.triagem && (
                       <Badge
-                        className={`${prioridadeColor(p.triagem.prioridade)}`}
+                        className={`${prioridadeColor(
+                          p.triagem.prioridade
+                        )} shrink-0`}
                       >
                         {prioridadeDesc(p.triagem.prioridade)}
                       </Badge>
                     )}
-
-                    <div className="flex flex-wrap gap-2">
-                      {p.filas?.map((f, i) => {
-                        const status = computeFilaStatus(p, f)
-                        const name =
-                          f?.fila?.especialidade?.nome ?? 'Especialidade'
-                        return (
-                          <Badge
-                            key={i}
-                            className={`whitespace-nowrap ${badgeClass(
-                              status
-                            )}`}
-                          >
-                            {name}
-                          </Badge>
-                        )
-                      })}
-                    </div>
                   </div>
 
-                  {/* Desktop: ícones com tooltip */}
-                  <div className="hidden md:flex gap-1">
+                  {/* Bloco à direita (desktop): ações */}
+                  <div className="hidden md:flex gap-1 shrink-0">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Visualizar triagem"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3"
                           onClick={() => onVer(p)}
+                          aria-label="Visualizar triagem"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-1" />
+                          Visualizar
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Visualizar Triagem</TooltipContent>
                     </Tooltip>
-
-                    {/* <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          aria-label="Remover da fila"
-                          onClick={() => {
-                            const confirmed = window.confirm(
-                              'Tem certeza que deseja remover este atendimento da fila?'
-                            )
-                            if (confirmed) {
-                              onExcluir(p.id)
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Remover da Fila</TooltipContent>
-                    </Tooltip> */}
                   </div>
 
-                  {/* Mobile: menu 3 pontinhos */}
-                  <div className="md:hidden">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Abrir ações"
-                        >
-                          <MoreVertical className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-60">
-                        <DropdownMenuItem onClick={() => onVer(p)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Visualizar triagem
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Send className="mr-2 h-4 w-4" />
-                          {p.filas?.filter(
-                            f => f.atendido == 0 && p.fila_id != f.fila.id
-                          ).length ? (
-                            p.filas
-                              ?.filter(
-                                f => f.atendido == 0 && p.fila_id != f.fila.id
-                              )
-                              .map(f => (
-                                <DropdownMenuItem
-                                  key={f.id}
-                                  onClick={() => onEncaminhar(p.id, f.fila.id)}
-                                >
-                                  {f.fila.especialidade.nome}
-                                </DropdownMenuItem>
-                              ))
-                          ) : (
-                            <DropdownMenuItem disabled>
-                              <Send className="mr-2 h-4 w-4" />
-                              Sem especialidades pendentes
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onExcluir(p.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir da fila
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {/* Mobile: somente “Visualizar triagem” */}
+                  <div className="md:hidden self-star">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-3"
+                      onClick={() => onVer(p)}
+                      aria-label="Visualizar triagem"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Visualizar
+                    </Button>
                   </div>
                 </div>
 
-                {/* Linha 2: Tempo decorrido - Idade - Responsável (desktop) */}
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground">
-                  <span>⏳ {waitingTime(p.entrada)}</span>
-                  <span>🎂 {ageFromISO(p.paciente.dataNascimento)}</span>
-                  <span className="hidden md:inline">
-                    👨‍⚕️ Responsável triagem:{' '}
-                    <span className="font-medium text-foreground">
-                      {p.triagem?.usuario?.usuario}
+                {/* Linha 2: Badges de especialidades (mobile: quebra em múltiplas linhas) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {p.filas?.map((f, i) => {
+                      const status = computeFilaStatus(p, f)
+                      const name =
+                        f?.fila?.especialidade?.nome ?? 'Especialidade'
+                      return (
+                        <Badge
+                          key={i}
+                          className={`px-2 py-0.5 text-xs whitespace-nowrap ${badgeClass(
+                            status
+                          )}`}
+                        >
+                          {name}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+
+                  {/* Linha 3: Meta (tempo/idade/responsável) — responsável oculto no mobile */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                    <span>⏳ {waitingTime(p.entrada)}</span>
+                    <span>🎂 {ageFromISO(p.paciente.dataNascimento)}</span>
+                    <span className="hidden md:inline">
+                      👨‍⚕️ Responsável triagem:{' '}
+                      <span className="font-medium text-foreground">
+                        {p.triagem?.usuario?.usuario}
+                      </span>
                     </span>
-                  </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </TooltipProvider>
+
       {triagemSelecionada && (
         <TriagemViewDialog
           open={triagemOpen}

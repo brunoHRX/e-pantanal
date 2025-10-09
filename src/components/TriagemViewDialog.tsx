@@ -10,8 +10,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AtendimentoFluxo } from '@/services/fluxoService'
-import { ageFromISO, badgeClass, computeFilaStatus, safeDateLabel, safeDateTimeLabel, waitingTime } from '@/utils/functions'
-import { Block } from '@/components/ui/block'
+import {
+  ageFromISO,
+  badgeClass,
+  computeFilaStatus,
+  safeDateLabel,
+  safeDateTimeLabel,
+  waitingTime
+} from '@/utils/functions'
 
 export function TriagemViewDialog({
   open,
@@ -22,30 +28,45 @@ export function TriagemViewDialog({
   onOpenChange: (v: boolean) => void
   atendimento: AtendimentoFluxo
 }) {
-  const possuiComorbidades = atendimento.triagem?.comorbidades !== "" ? true : false;
-  const possuiAlergias = atendimento.triagem?.alergias !== "" ? true : false;
+  const possuiComorbidades =
+    atendimento.triagem?.comorbidades !== '' ? true : false
+  const possuiAlergias = atendimento.triagem?.alergias !== '' ? true : false
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Triagem do Paciente</DialogTitle>
-          <DialogDescription>Visualização: somente-leitura</DialogDescription>
+      {/* SAFE: largura/altura limitadas + scroll interno + sem overflow horizontal */}
+      <DialogContent
+        className="
+        w-full 
+        max-w-[95vw] sm:max-w-4xl 
+        p-4 sm:p-6 
+        overflow-x-hidden 
+        max-h-[85vh] sm:max-h-[80vh] 
+        overflow-y-auto 
+        overscroll-contain
+      "
+      >
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="truncate">Triagem do Paciente</DialogTitle>
+          <DialogDescription className="truncate">
+            Visualização: somente-leitura
+          </DialogDescription>
         </DialogHeader>
 
         {!atendimento ? (
           <div className="text-sm text-muted-foreground">Carregando…</div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* ===== Cabeçalho Paciente / Metadados ===== */}
-            <section className="space-y-1">
+            <section className="space-y-1 min-w-0">
               <div>
                 {/* Nome destacado */}
                 <div className="font-semibold text-lg truncate">
                   {atendimento.paciente.nome}
                 </div>
 
-                {/* Metadados todos na mesma linha */}
-                <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                {/* Metadados todos na mesma linha (quebrando se precisar) */}
+                <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 break-words">
                   <span>
                     Nasc.:{' '}
                     {atendimento.paciente.dataNascimento
@@ -79,7 +100,9 @@ export function TriagemViewDialog({
                   return (
                     <Badge
                       key={i}
-                      className={`whitespace-nowrap ${badgeClass(status)}`}
+                      className={`px-2 py-0.5 text-xs whitespace-nowrap ${badgeClass(
+                        status
+                      )}`}
                     >
                       {name}
                     </Badge>
@@ -89,17 +112,25 @@ export function TriagemViewDialog({
             )}
 
             {/* ===== Situação / Queixa ===== */}
-            <FieldIf label="Situação / Queixa Principal" exists={atendimento.triagem?.queixa}>
-              {atendimento.triagem?.queixa}
+            <FieldIf
+              label="Situação / Queixa Principal"
+              exists={atendimento.triagem?.queixa}
+            >
+              <div className="whitespace-pre-wrap break-words">
+                {atendimento.triagem?.queixa}
+              </div>
             </FieldIf>
 
             {/* ===== Sinais Vitais ===== */}
             {atendimento.triagem && (
-              <section>
+              <section className="min-w-0">
                 <SectionTitle>Sinais vitais</SectionTitle>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
                   {renderVital('peso', String(atendimento.triagem.peso))}
-                  {renderVital('temperatura', String(atendimento.triagem.temperatura))}
+                  {renderVital(
+                    'temperatura',
+                    String(atendimento.triagem.temperatura)
+                  )}
                   {renderVital('fr', atendimento.triagem.fr)}
                   {renderVital('sato2', atendimento.triagem.sato2)}
                   {renderVital('pa', atendimento.triagem.pa)}
@@ -109,44 +140,76 @@ export function TriagemViewDialog({
             )}
 
             {/* ===== Comorbidades / Medicações / Alergias ===== */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {atendimento.triagem && (<FieldIf label="Comorbidades" exists={atendimento.triagem.comorbidades}>
-                <KeyValue k="Opção" v={possuiComorbidades ? "Sim" : "Não"} />
-                {possuiComorbidades && (
-                  <KeyValue k="Descrição" v={atendimento.triagem.comorbidades} />
-                )}
-              </FieldIf>)}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+              {atendimento.triagem && (
+                <FieldIf
+                  label="Comorbidades"
+                  exists={atendimento.triagem.comorbidades}
+                >
+                  <KeyValue k="Opção" v={possuiComorbidades ? 'Sim' : 'Não'} />
+                  {possuiComorbidades && (
+                    <KeyValue
+                      k="Descrição"
+                      v={atendimento.triagem.comorbidades}
+                    />
+                  )}
+                </FieldIf>
+              )}
 
-              {atendimento.triagem && (<FieldIf
-                label="Medicação nas últimas 24h"
-                exists={atendimento.triagem.medicacao24h}
-              >
-                {atendimento.triagem.medicacao24h}
-              </FieldIf>)}
+              {atendimento.triagem && (
+                <FieldIf
+                  label="Medicação nas últimas 24h"
+                  exists={atendimento.triagem.medicacao24h}
+                >
+                  <div className="break-words">
+                    {atendimento.triagem.medicacao24h}
+                  </div>
+                </FieldIf>
+              )}
 
-              {atendimento.triagem && (<FieldIf label="Alergias" exists={atendimento.triagem.alergias}>
-                <KeyValue k="Possui alergia?" v={possuiAlergias ? "Sim" : "Não"} />
-                {possuiAlergias && (
-                  <KeyValue k="Quais" v={atendimento.triagem.alergias} />
-                )}
-              </FieldIf>)}
+              {atendimento.triagem && (
+                <FieldIf label="Alergias" exists={atendimento.triagem.alergias}>
+                  <KeyValue
+                    k="Possui alergia?"
+                    v={possuiAlergias ? 'Sim' : 'Não'}
+                  />
+                  {possuiAlergias && (
+                    <KeyValue k="Quais" v={atendimento.triagem.alergias} />
+                  )}
+                </FieldIf>
+              )}
             </section>
 
             {/* ===== Informações da Coleta / Usuário ===== */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {atendimento.triagem && (<FieldIf
-                label="Coleta (informado na triagem)"
-                exists={atendimento.triagem?.usuario}
-              >
-                {atendimento.triagem.usuario && (
-                  <KeyValue k="Profissional" v={atendimento.triagem.usuario.usuario} />
-                )}
-                {atendimento.triagem.data && <KeyValue k="Data/Hora" v={safeDateLabel(atendimento.triagem.data)} />}
-              </FieldIf>)}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+              {atendimento.triagem && (
+                <FieldIf
+                  label="Coleta (informado na triagem)"
+                  exists={atendimento.triagem?.usuario}
+                >
+                  {atendimento.triagem.usuario && (
+                    <KeyValue
+                      k="Profissional"
+                      v={atendimento.triagem.usuario.usuario}
+                    />
+                  )}
+                  {atendimento.triagem.data && (
+                    <KeyValue
+                      k="Data/Hora"
+                      v={safeDateLabel(atendimento.triagem.data)}
+                    />
+                  )}
+                </FieldIf>
+              )}
 
-              {atendimento.triagem?.usuario && (<FieldIf label="Usuário (sistema)" exists={atendimento.triagem.usuario.usuario}>
-                {atendimento.triagem.usuario.usuario}
-              </FieldIf>)}
+              {atendimento.triagem?.usuario && (
+                <FieldIf
+                  label="Usuário (sistema)"
+                  exists={atendimento.triagem.usuario.usuario}
+                >
+                  {atendimento.triagem.usuario.usuario}
+                </FieldIf>
+              )}
             </section>
 
             <div className="flex justify-end">
@@ -182,9 +245,9 @@ function labelVital(key: string) {
 function VitalBox({ k, v }: { k: string; v?: string }) {
   if (!v || String(v).trim() === '') return null
   return (
-    <div className="rounded  p-2">
+    <div className="rounded p-2">
       <div className="text-muted-foreground">{labelVital(k)}</div>
-      <div className="font-medium">{v}</div>
+      <div className="font-medium break-words">{v}</div>
     </div>
   )
 }
@@ -193,7 +256,11 @@ function renderVital(k: string, v?: string) {
 }
 
 function KeyValue({ k, v }: { k: string; v?: string | number | null }) {
-  if (v === null || v === undefined || String(v).trim?.() === '') {
+  if (
+    v === null ||
+    v === undefined ||
+    (typeof v === 'string' && v.trim() === '')
+  ) {
     return (
       <div className="text-sm">
         <span className="text-muted-foreground">{k}: </span> —
@@ -201,7 +268,7 @@ function KeyValue({ k, v }: { k: string; v?: string | number | null }) {
     )
   }
   return (
-    <div className="text-sm">
+    <div className="text-sm break-words">
       <span className="text-muted-foreground">{k}: </span>
       <span className="font-medium text-foreground">{String(v)}</span>
     </div>
@@ -229,9 +296,9 @@ function FieldIf({
   if (!has && !childHasContent) return null
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 min-w-0">
       <div className="text-sm font-medium">{label}</div>
-      <div className="text-sm text-foreground">{children}</div>
+      <div className="text-sm text-foreground break-words">{children}</div>
     </div>
   )
 }
