@@ -1,4 +1,4 @@
-export function renderExtratoHTML(input: {
+export function renderConsolidadoHTML(input: {
   leftImg?: string // data URI
   rightImg?: string // data URI
   titulo?: string
@@ -8,7 +8,7 @@ export function renderExtratoHTML(input: {
   const {
     leftImg = '',
     rightImg = '',
-    titulo = 'Extrato',
+    titulo = 'Consolidado',
     filtros = {},
     secoes = {}
   } = input

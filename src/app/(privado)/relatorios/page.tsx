@@ -253,7 +253,7 @@ function GerarRelatorioDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Gerar relatório (Modelo de extrato)</DialogTitle>
+          <DialogTitle>Gerar relatório (Modelo de Consolidado)</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

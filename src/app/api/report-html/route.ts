@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
-import { renderExtratoHTML } from "@/lib/pdf/extrato-template";
+import { renderConsolidadoHTML } from "@/lib/pdf/consolidado-template";
 import ExcelJS from "exceljs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (format === "xlsx") {
     // ======= Geração de Excel =======
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Extrato");
+    const ws = wb.addWorksheet("Consolidado");
 
     ws.mergeCells("A1:D1");
     ws.getCell("A1").value = "INSTITUTO ALMA PANTANEIRA";
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     const buffer = await wb.xlsx.writeBuffer();
-    const fileName = `relatorio-extrato-${Date.now()}.xlsx`;
+    const fileName = `relatorio-Consolidado-${Date.now()}.xlsx`;
     return new NextResponse(buffer, {
       status: 200,
       headers: new Headers({
@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
   }
 
   // ======= Geração de PDF =======
-  const html = renderExtratoHTML({
+  const html = renderConsolidadoHTML({
     leftImg,
     rightImg,
-    titulo: "Extrato",
+    titulo: "Consolidado",
     filtros: filters,
     secoes: options,
   });
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
 
   await browser.close();
 
-  const fileName = `relatorio-extrato-${Date.now()}.pdf`;
+  const fileName = `relatorio-Consolidado-${Date.now()}.pdf`;
   // Convert Uint8Array to Buffer for NextResponse
   const pdfNodeBuffer = Buffer.from(pdfBuffer);
   return new NextResponse(pdfNodeBuffer, {
