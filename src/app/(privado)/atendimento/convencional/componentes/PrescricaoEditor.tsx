@@ -51,6 +51,7 @@ export default function PrescricaoEditor({
       observacao: '',
       frequencia: ''
     }
+    
     onChange([...value, novo])
     onDirty?.()
     setQuery('')
@@ -159,7 +160,7 @@ export default function PrescricaoEditor({
                 U.M
               </div>
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Posologia
+                Frequência (em horas)
               </div>
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">
                 Ações
@@ -235,19 +236,19 @@ export default function PrescricaoEditor({
                       </datalist>
                     </div>
 
-                    {/* Posologia (texto livre) – usa o campo 'frequencia' do tipo */}
+                    {/* Frequência */}
                     <div className="flex flex-col gap-1">
                       <span className="md:hidden text-[11px] font-medium text-muted-foreground">
-                        Posologia
+                        Frequência (em horas)
                       </span>
                       <Input
-                        placeholder='Ex.: "1 cp a cada 12h por 7 dias"'
+                        placeholder='Ex.: "12"'
                         value={it.frequencia ?? ''}
                         onChange={e =>
                           setField(idx, 'frequencia', e.target.value)
                         }
-                        aria-label="Posologia"
-                        title="Posologia"
+                        aria-label="Frequência"
+                        title="Frequência"
                       />
                     </div>
 
@@ -267,23 +268,17 @@ export default function PrescricaoEditor({
                     {/* Observação (linha inteira) */}
                     <div className="md:col-span-5">
                       <span className="md:hidden text-[11px] font-medium text-muted-foreground">
-                        Observação
+                        Posologia
                       </span>
                       <Input
-                        placeholder="Observação (opcional)"
+                        placeholder="Posologia (opcional)"
                         value={it.observacao ?? ''}
                         onChange={e =>
                           setField(idx, 'observacao', e.target.value)
                         }
-                        aria-label="Observação"
-                        title="Observação"
+                        aria-label="Posologia"
+                        title="Posologia"
                       />
-                    </div>
-
-                    {/* Preview da linha pronta da receita */}
-                    <div className="md:col-span-5 text-xs text-muted-foreground">
-                      <span className="font-medium">Linha da receita: </span>
-                      {linhaPronta}
                     </div>
                   </div>
                 )

@@ -71,21 +71,21 @@ function composeLinhaReceita(it: ReceitaMedicamentoLike) {
 }
 
 // Normaliza medicacoes para string[]
-function normalizeMedicacoes(m: unknown): string[] {
-  if (!m) return [];
-  // já é string simples?
-  if (typeof m === "string") return [m];
-  // já é array de strings?
-  if (Array.isArray(m) && m.every(x => typeof x === "string")) {
-    return m as string[];
-  }
-  // é array de objetos (formato antigo)?
-  if (Array.isArray(m)) {
-    return (m as ReceitaMedicamentoLike[]).map(composeLinhaReceita).filter(Boolean);
-  }
-  // fallback
-  return [String(m)];
-}
+// function normalizeMedicacoes(m: unknown): string[] {
+//   if (!m) return [];
+//   // já é string simples?
+//   if (typeof m === "string") return [m];
+//   // já é array de strings?
+//   if (Array.isArray(m) && m.every(x => typeof x === "string")) {
+//     return m as string[];
+//   }
+//   // é array de objetos (formato antigo)?
+//   if (Array.isArray(m)) {
+//     return (m as ReceitaMedicamentoLike[]).map(composeLinhaReceita).filter(Boolean);
+//   }
+//   // fallback
+//   return [String(m)];
+// }
 
 export async function POST(req: NextRequest) {
   try {
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     // const assinaturaDataUri = await fileToDataUri("/images/assinatura.png");
 
     // Normaliza as linhas de medicações (tanto faz string[] ou objetos)
-    const linhas = normalizeMedicacoes(body.medicacoes);
+    // const linhas = normalizeMedicacoes(body.medicacoes);
 
     // Monta HTML (seu template já deve aceitar string[] em medicacoes)
     const html = renderReceituarioHTML({
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       medico_nome: body.medico_nome ?? "",
       crm: body.crm ?? "",
       especialidade: body.especialidade ?? "",
-      medicacoes: linhas, // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      medicacoes: body.medicacoes, // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       headerLeftDataUri,
       headerRightDataUri,
       assinaturaDataUri: body.assinaturaDataUri, // se vier no body

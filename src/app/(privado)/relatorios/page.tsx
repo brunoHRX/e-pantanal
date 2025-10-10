@@ -21,36 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-
-// ===================== Tipos =====================
-export type RelatorioFilters = {
-  dataInicio?: string // ISO (yyyy-mm-dd)
-  dataFim?: string // ISO (yyyy-mm-dd)
-  fazendaSede?: string // id ou nome
-  genero?: 'M' | 'F' | 'NI' | 'ALL'
-  tipoAtendimento?: string // id ou slug
-}
-
-export type DashboardTotals = {
-  pacientesAssistidos: number
-  procedimentos: number
-  atendimentosAreas: number // total de áreas em que houve atendimento
-}
-
-// ===================== MOCK SERVICE (KPIs) =====================
-async function mockFetchDashboardTotals(
-  filters: RelatorioFilters
-): Promise<DashboardTotals> {
-  await new Promise(r => setTimeout(r, 600))
-  const base = 100
-  const bump = filters.tipoAtendimento ? 12 : 0
-  const gen = filters.genero && filters.genero !== 'ALL' ? -5 : 0
-  return {
-    pacientesAssistidos: base + bump + gen,
-    procedimentos: base * 3 + bump * 2,
-    atendimentosAreas: 7 + (filters.fazendaSede ? 1 : 0)
-  }
-}
+import { DashboardTotals, RelatorioFilters, fetchDashboardData } from '@/services/relatoriosService'
 
 // ===================== Helpers =====================
 function downloadBlob(filename: string, blob: Blob) {
@@ -171,7 +142,7 @@ function FiltrosDialog({
             </Select>
           </div>
 
-          <div className="sm:col-span-2">
+          {/* <div className="sm:col-span-2">
             <Label className="pb-2">Tipo de atendimento</Label>
             <Input
               placeholder="Ex.: Psicologia, Fono, Fisio..."
@@ -180,7 +151,7 @@ function FiltrosDialog({
                 onChange({ ...value, tipoAtendimento: e.target.value })
               }
             />
-          </div>
+          </div> */}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
@@ -385,8 +356,7 @@ export default function RelatoriosPage() {
       try {
         setLoading(true)
         setError(null)
-        // 🔌 PONTO DE INTEGRAÇÃO: trocar mock por reportService.fetchDashboardTotals(filters)
-        const res = await mockFetchDashboardTotals(filters)
+        const res = await fetchDashboardData(filters)
         if (!alive) return
         setTotals(res)
       } catch (e: any) {
@@ -474,12 +444,12 @@ export default function RelatoriosPage() {
       {/* Placeholder para evoluções (tabelas/gráficos) */}
       <Card>
         <CardHeader>
-          <CardTitle>Resumo (mock)</CardTitle>
+          <CardTitle>Resumo</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-muted-foreground">
-            Espaço para tabela de "Top procedimentos", "Atendimentos por sede",
-            etc.
+            {/* Espaço para tabela de "Top procedimentos", "Atendimentos por sede",
+            etc. */}
             {/* 🔌 Quando integrar, renderize componentes que consumam os mesmos filtros. */}
           </div>
         </CardContent>

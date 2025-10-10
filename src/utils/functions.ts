@@ -1,6 +1,7 @@
 import { AtendimentoFilas, AtendimentoFluxo } from '@/types/Fluxo'
 import { differenceInYears, format, parseISO, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { API_BASE, headers } from "@/utils/constants";
 
 export type BadgeStatus = 'active' | 'pending' | 'expired' | 'atendendo'
 
@@ -131,12 +132,13 @@ export function prioridadeDesc(prioridade:string): string {
     }
     return cor;
 }
-
 export async function generateAndDownload(
     endpoint: string,
     payload: any,
     prefix: string
   ) {
+    console.log(endpoint);
+    
     const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

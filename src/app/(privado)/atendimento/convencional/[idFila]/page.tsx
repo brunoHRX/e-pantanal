@@ -426,9 +426,7 @@ export default function AtendimentoConvencionalPage() {
       const especialidadedDesc =
         especialidades.find(e => e.id === userEspecialidade)?.nome ?? ''
 
-      // transforma os itens de prescrição em linhas prontas (string[])
-      const linhas = mapReceitaLinhas(prescricoes)
-
+        // console.log(prescricoes);
       const payload = {
         paciente_nome: atendimento.paciente.nome,
         data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
@@ -437,9 +435,9 @@ export default function AtendimentoConvencionalPage() {
         crm: userCRM,
         especialidade: especialidadedDesc,
         // AGORA: array de strings pronto pro template
-        medicacoes: linhas
+        medicacoes: prescricoes
       }
-
+      
       await generateAndDownload('/api/receituario-html', payload, 'receituario')
       toast.message('Receituário gerado com sucesso!')
     } catch (e: any) {
@@ -460,7 +458,6 @@ export default function AtendimentoConvencionalPage() {
           crm: userCRM,
           especialidade: especialidadedDesc
         }
-        // console.log(prescricoes);
         await generateAndDownload('/api/documento-html', payload, 'documento')
         toast.message('Documento gerado com sucesso!')
       }

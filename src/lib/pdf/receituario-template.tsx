@@ -1,3 +1,5 @@
+import { ReceitaMedicamento } from "@/services/medicamentoService"
+
 // mantém sua tipagem
 export type ReceitaPayload = {
   paciente_nome: string
@@ -6,7 +8,7 @@ export type ReceitaPayload = {
   medico_nome: string
   crm: string
   especialidade: string
-  medicacoes: string[] | string
+  medicacoes: ReceitaMedicamento[]
   headerLeftDataUri?: string
   headerRightDataUri?: string
   assinaturaDataUri?: string
@@ -23,26 +25,12 @@ function escapeHtml(s: string) {
 }
 
 export function renderReceituarioHTML(data: ReceitaPayload) {
-  // normaliza medicações (string[] | string) e monta <li> com numeração
-  const asList = Array.isArray(data.medicacoes)
-    ? data.medicacoes
-    : [String(data.medicacoes ?? '')]
-
-  const medsHTML = `
-    <ol class="rx-list">
-      ${asList
-        .filter(Boolean)
-        .map(
-          (m, i) => `
-          <li class="rx-item">
-            <span class="num">${i + 1}.</span>
-            <span class="txt">${escapeHtml(String(m))}</span>
-          </li>
-        `
-        )
-        .join('')}
-    </ol>
-  `
+  var meds = "";
+  data.medicacoes.forEach(element => {
+    let underscores = "_".repeat(Math.max(0, 70 - escapeHtml(element.medicamento.nome).length - `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length))
+    meds += `<li>${escapeHtml(element.medicamento.nome)}${underscores}${element.duracao} ${escapeHtml(element.unidade_medida)}</li>`;
+    meds += `<span style="margin-bottom: 5px;">${escapeHtml(element.observacao)}</span>`;
+  })
 
   const leftImg = data.headerLeftDataUri
     ? `<img src="${data.headerLeftDataUri}" style="max-height:90px; object-fit:contain;" alt="logo">`
@@ -143,7 +131,9 @@ export function renderReceituarioHTML(data: ReceitaPayload) {
 
   <div class="label">Medicações / Orientações:</div>
   <div class="box">
-    ${medsHTML}
+    <ol class="small" style="margin:0; padding-left: 16px;">
+      ${meds}
+    </ol>
   </div>
 
   <div class="sig-wrap">
