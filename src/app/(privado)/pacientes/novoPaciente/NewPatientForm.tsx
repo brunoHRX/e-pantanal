@@ -29,8 +29,19 @@ import {
   SelectContent,
   SelectItem
 } from '@/components/ui/select'
-import { useEffect, useState } from 'react'
-import { Patient, createPatient, getPatientById, startAtendimento, updatePatient } from '@/services/patientService'
+import { useEffect, useMemo, useState } from 'react'
+import { Patient, createPatient, getAllPatients, getPatientById, startAtendimento, updatePatient } from '@/services/patientService'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { stripDiacritics } from '@/utils/functions'
+import { DataTable } from '@/components/ui/data-table'
+import { ColumnDef } from '@tanstack/react-table'
+import { Search } from 'lucide-react'
 
 const SEX_OPTIONS = ['Masculino', 'Feminino', 'Outro']
 const COR_RACA_OPCOES = [
@@ -115,6 +126,9 @@ export default function NovoPacientePage() {
   const id = searchParams.get('id')
   const [loading, setLoading] = useState(false)
   const [inicarAtendimento, setInicarAtendimento] = useState(false)
+  const [isModalResponsavelOpen, setModalResponsavelOpen] = useState(false)
+  const [pacientes, setPacientes] = useState<Patient[]>([])
+  const [error, setError] = useState<string | null>(null)
   const form = useForm<Patient & { [key: string]: any }>({
     defaultValues: {
       nome: '',
@@ -149,7 +163,9 @@ export default function NovoPacientePage() {
       estadoCivil: '',
       tipoSanguineo: '',
       ocupacao: '',
-      escolaridade: ''
+      escolaridade: '',
+      paciente_id: 0,
+      responsavel: ''
     }
   })
 
@@ -159,6 +175,48 @@ export default function NovoPacientePage() {
   const desconhecePai = form.watch('desconhecePai')
   const semNumero = form.watch('semNumero')
   // const relacaoLocal = form.watch('relacaoLocal')
+  async function runSearch() {
+    setLoading(true)
+    setError(null)
+    try {
+      const dados = await getAllPatients()
+      setPacientes(
+        dados.map(p => ({
+          ...p,
+          fazendaReferencia: p.fazendaReferencia ?? ''
+        }))
+      )
+    } catch (err) {
+      setError((err as Error).message)
+      setPacientes([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  useEffect(() => {
+    runSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const cep = form.watch("cep")?.replace(/\D/g, "")
+    if (cep?.length === 8) {
+      fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then((res) => res.json())
+        .then((data) => {          
+          if (!data.erro) {
+            form.setValue("logradouro", data.logradouro)
+            form.setValue("bairro", data.bairro)
+            form.setValue("municipio", data.localidade)
+            form.setValue("uf", data.uf)
+          }
+        })
+        .catch(() => {
+          console.error("Erro ao buscar CEP")
+        })
+    }
+  }, [form.watch("cep")])
 
   useEffect(() => {
     if (!id) return
@@ -185,7 +243,7 @@ export default function NovoPacientePage() {
         pacienteId = res.id;
       }
 
-      await startAtendimento(pacienteId)
+      if(inicarAtendimento) await startAtendimento(pacienteId)
       router.push('/pacientes')
     } catch (err) {
       console.error(err)
@@ -196,6 +254,36 @@ export default function NovoPacientePage() {
 
   function onCancel() {
     router.back()
+  }
+
+  const colunas = useMemo<ColumnDef<Patient>[]>(
+    () => [
+      { accessorKey: 'id', header: 'ID' },
+      { accessorKey: 'nome', header: 'Nome' },
+      { accessorKey: 'cpf', header: 'Cpf' },
+      {
+        id: 'actions',
+        header: 'Ações',
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleSelecionar(row.original)}
+            >
+              Selecionar
+            </Button>
+          </div>
+        )
+      }
+    ],
+    []
+  )
+
+  function handleSelecionar(paciente: Patient) {
+    form.setValue("paciente_id", paciente.id)
+    form.setValue("responsavel", paciente.nome)
+    setModalResponsavelOpen(false)
   }
 
   return (
@@ -692,9 +780,9 @@ export default function NovoPacientePage() {
                     control={form.control}
                     name="relacaoFamiliar"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-3">
+                      <FormItem className="md:col-span-1">
                         <FormLabel>
-                          Se Familiar ou Outro — especifique a relação
+                          Relação familiar
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -703,6 +791,38 @@ export default function NovoPacientePage() {
                             placeholder="Descreva a relação familiar ou outra relação"
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="responsavel"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>
+                          Responsável
+                        </FormLabel>
+                        <div className="flex">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              className="mt-1"
+                              placeholder="Responsável"
+                            />
+                          </FormControl>
+                          
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="mt-1"
+                            onClick={() => setModalResponsavelOpen(true)}
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -835,6 +955,15 @@ export default function NovoPacientePage() {
           </form>
         </Form>
       </Card>
+
+      {true && (<Dialog open={isModalResponsavelOpen} onOpenChange={setModalResponsavelOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Pacientes</DialogTitle>
+          </DialogHeader>
+          <DataTable columns={colunas} data={pacientes} loading={loading} />
+        </DialogContent>
+      </Dialog>)}
     </div>
   )
 }

@@ -33,5 +33,7 @@ export type Patient = {
     sexo: string,
     tipoLogradouro: string,
     tipoSanguineo: string,
-    uf: string
+    uf: string,
+    paciente_id?: number,
+    responsavel?: string
 };
