@@ -11,3 +11,31 @@ export type RelatorioFilters = {
     genero?: 'M' | 'F' | 'NI' | 'ALL'
     tipoAtendimento?: string // id ou slug
 }
+
+export type Consolidado = {
+    procedimentos: ConsolidadoProcedimentos
+    generos: ConsolidadoSexo
+    especialidades: ConsolidadoEspecialidade
+}
+export type ConsolidadoProcedimentos = {
+    triagem: number
+    procedimentos: DetalhamentoProcedimentos[]
+}
+export type DetalhamentoProcedimentos = {
+    descricao: string
+    quantitativo: number
+}
+export type ConsolidadoSexo = {
+    sexo: DetalhamentoSexo[]
+}
+export type DetalhamentoSexo = {
+    descricao: string
+    quantitativo: number
+}
+export type ConsolidadoEspecialidade = {
+    especialidade: DetalhamentoEspecialidade[]
+}
+export type DetalhamentoEspecialidade = {
+    descricao: string
+    quantitativo: number
+}

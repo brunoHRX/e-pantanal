@@ -1,16 +1,27 @@
+import { ConsolidadoEspecialidade, ConsolidadoProcedimentos, ConsolidadoSexo, DashboardTotals } from "@/types/Relatorio"
+import { safeDateLabel } from "@/utils/functions"
+
 export function renderConsolidadoHTML(input: {
   leftImg?: string // data URI
   rightImg?: string // data URI
   titulo?: string
   filtros?: any
   secoes?: any
+  dataDashboard : DashboardTotals
+  detalhamentoProcedimentos? : ConsolidadoProcedimentos
+  detalhamentoSexo? : ConsolidadoSexo
+  detalhamentoEspecialidade? : ConsolidadoEspecialidade
 }) {
   const {
     leftImg = '',
     rightImg = '',
     titulo = 'Consolidado',
-    filtros = {},
-    secoes = {}
+    filtros,
+    secoes = {},
+    dataDashboard,
+    detalhamentoProcedimentos,
+    detalhamentoSexo,
+    detalhamentoEspecialidade
   } = input
   return `
 <!doctype html>
@@ -54,8 +65,8 @@ th { background: #f8fafc; text-align: left; }
 
 
 <div class="section kv">
-<div><b>Período:</b> ${filtros?.dataInicio || '—'} → ${
-    filtros?.dataFim || '—'
+<div><b>Período:</b> ${safeDateLabel(filtros?.dataInicio) || '—'} → ${
+    safeDateLabel(filtros?.dataFim) || '—'
   }</div>
 <div><b>Fazenda sede:</b> ${filtros?.fazendaSede || 'Todas'} • <b>Gênero:</b> ${
     filtros?.genero || 'Todos'
@@ -64,29 +75,70 @@ th { background: #f8fafc; text-align: left; }
 
 
 <div class="section">
-<table>
-<thead>
-<tr><th>Seção</th><th>Descrição</th></tr>
-</thead>
-<tbody>
-${
-  secoes?.incluirDetalheProcedimentos
-    ? `<tr><td>Procedimentos</td><td>Detalhe de procedimentos (mock)</td></tr>`
-    : ''
-}
-${
-  secoes?.incluirTotaisPorGenero
-    ? `<tr><td>Totais por gênero</td><td>Resumo de homens/mulheres/NI (mock)</td></tr>`
-    : ''
-}
-${
-  secoes?.incluirTotaisPorTipoAtendimento
-    ? `<tr><td>Totais por tipo</td><td>Distribuição por especialidade (mock)</td></tr>`
-    : ''
-}
-</tbody>
-</table>
+  <span>Dados gerais</span>
+  <table>
+    <thead>
+      <tr><th></th><th>Quantitativo</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Pacientes assistidos</td><td>${dataDashboard.pacientesAssistidos}</td></tr>
+      <tr><td>Total de procedimentos</td><td>${dataDashboard.procedimentos}</td></tr>
+      <tr><td>Total de áreas assistidas</td><td>${dataDashboard.atendimentosAreas}</td></tr>
+    </tbody>
+  </table>
 </div>
+${ secoes?.incluirDetalheProcedimentos &&  detalhamentoProcedimentos && (
+  `<div class="section">
+    <span>Procedimentos</span>
+    <table>
+      <thead>
+        <tr><th></th><th>Quantitativo</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Triagens</td><td>${detalhamentoProcedimentos.triagem}</td></tr>
+        ${
+          detalhamentoProcedimentos.procedimentos.forEach(detalhamento => {
+            `<tr><td>${detalhamento.descricao}</td><td>${detalhamento.quantitativo}</td></tr>`
+          })
+        }
+      </tbody>
+    </table>
+  </div>`
+)}
+${ secoes?.incluirTotaisPorGenero &&  detalhamentoSexo && (
+  `<div class="section">
+    <span>Gêneros</span>
+    <table>
+      <thead>
+        <tr><th></th><th>Quantitativo</th></tr>
+      </thead>
+      <tbody>
+        ${
+          detalhamentoSexo.sexo.forEach(detalhamento => {
+            `<tr><td>${detalhamento.descricao}</td><td>${detalhamento.quantitativo}</td></tr>`
+          })
+        }
+      </tbody>
+    </table>
+  </div>`
+)}
+${ secoes?.incluirTotaisPorTipoAtendimento &&  detalhamentoEspecialidade && (
+  `<div class="section">
+    <span>Especialidades</span>
+    <table>
+      <thead>
+        <tr><th></th><th>Quantitativo</th></tr>
+      </thead>
+      <tbody>
+        ${
+          detalhamentoEspecialidade.especialidade.forEach(detalhamento => {
+            `<tr><td>${detalhamento.descricao}</td><td>${detalhamento.quantitativo}</td></tr>`
+          })
+        }
+      </tbody>
+    </table>
+  </div>`
+)}
 </body>
 </html>`
 }

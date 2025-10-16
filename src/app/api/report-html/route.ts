@@ -24,7 +24,14 @@ async function fileToDataUri(relPath: string) {
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const format = (searchParams.get("format") || "pdf").toLowerCase();
-  const { filters, options } = await req.json();
+  const { 
+    filters, 
+    options, 
+    dataDashboard,
+    detalhamentoProcedimentos,
+    detalhamentoSexo,
+    detalhamentoEspecialidade
+  } = await req.json();
 
   const leftImg = await fileToDataUri("/images/alma.png");
   const rightImg = await fileToDataUri("/images/med-pantanal.png");
@@ -89,7 +96,11 @@ export async function POST(req: NextRequest) {
     rightImg,
     titulo: "Consolidado",
     filtros: filters,
-    secoes: options,
+    secoes: options,  
+    dataDashboard: dataDashboard,
+    detalhamentoProcedimentos: detalhamentoProcedimentos,
+    detalhamentoSexo: detalhamentoSexo,
+    detalhamentoEspecialidade: detalhamentoEspecialidade
   });
 
   const browser = await puppeteer.launch({

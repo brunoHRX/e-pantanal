@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import { DashboardTotals, RelatorioFilters, fetchDashboardData } from '@/services/relatoriosService'
+import { DashboardTotals, RelatorioFilters, fetchConsolidadoData, fetchDashboardData } from '@/services/relatoriosService'
+import { Consolidado, ConsolidadoEspecialidade, ConsolidadoProcedimentos, ConsolidadoSexo } from '@/types/Relatorio'
 
 // ===================== Helpers =====================
 function downloadBlob(filename: string, blob: Blob) {
@@ -168,11 +169,19 @@ function FiltrosDialog({
 function GerarRelatorioDialog({
   open,
   onOpenChange,
-  filters
+  filters,
+  dataDashboard,
+  detalhamentoProcedimentos,
+  detalhamentoSexo,
+  detalhamentoEspecialidade
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  filters: RelatorioFilters
+  filters: RelatorioFilters  
+  dataDashboard : DashboardTotals | null
+  detalhamentoProcedimentos? : ConsolidadoProcedimentos | null
+  detalhamentoSexo? : ConsolidadoSexo | null
+  detalhamentoEspecialidade? : ConsolidadoEspecialidade | null
 }) {
   const [form, setForm] = useState({
     incluirDetalheProcedimentos: true,
@@ -193,9 +202,12 @@ function GerarRelatorioDialog({
           options: {
             incluirDetalheProcedimentos: form.incluirDetalheProcedimentos,
             incluirTotaisPorGenero: form.incluirTotaisPorGenero,
-            incluirTotaisPorTipoAtendimento:
-              form.incluirTotaisPorTipoAtendimento
-          }
+            incluirTotaisPorTipoAtendimento: form.incluirTotaisPorTipoAtendimento
+          },
+          dataDashboard: dataDashboard,
+          detalhamentoProcedimentos: detalhamentoProcedimentos,
+          detalhamentoSexo: detalhamentoSexo,
+          detalhamentoEspecialidade: detalhamentoEspecialidade
         })
       })
       if (!res.ok) throw new Error('Falha ao gerar relatório')
@@ -349,6 +361,10 @@ export default function RelatoriosPage() {
   const [totals, setTotals] = useState<DashboardTotals | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [detalhamentoProcedimentos, setDetalhamentoProcedimentos] = useState<ConsolidadoProcedimentos | null>(null)
+  const [detalhamentoSexo, setDetalhamentoSexo] = useState<ConsolidadoSexo | null>(null)
+  const [detalhamentoEspecialidade, setDetalhamentoEspecialidade] = useState<ConsolidadoEspecialidade | null>(null)
+  const [consolidado, setConsolidado] = useState<Consolidado | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -359,6 +375,11 @@ export default function RelatoriosPage() {
         const res = await fetchDashboardData(filters)
         if (!alive) return
         setTotals(res)
+        const resConsolidado = await fetchConsolidadoData(filters)
+        setConsolidado(resConsolidado)
+        setDetalhamentoProcedimentos(resConsolidado.procedimentos)
+        setDetalhamentoSexo(resConsolidado.generos)
+        setDetalhamentoEspecialidade(resConsolidado.especialidades)
       } catch (e: any) {
         if (!alive) return
         setError(e?.message ?? 'Falha ao carregar totais.')
@@ -468,6 +489,10 @@ export default function RelatoriosPage() {
         open={openRelatorio}
         onOpenChange={setOpenRelatorio}
         filters={filters}
+        dataDashboard={totals}
+        detalhamentoProcedimentos={detalhamentoProcedimentos}
+        detalhamentoSexo={detalhamentoSexo}
+        detalhamentoEspecialidade={detalhamentoEspecialidade}
       />
     </div>
   )
