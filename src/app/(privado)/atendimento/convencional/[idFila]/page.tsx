@@ -40,7 +40,7 @@ import {
   Especialidade,
   getAll as getAllEspecialidades
 } from '@/services/especialidadeService'
-import { AtendimentoFluxo } from '@/types/Fluxo'
+import { AtendimentoFluxo, AtualizarTriagem } from '@/types/Fluxo'
 import { getAtendimentoById } from '@/services/fluxoService'
 import {
   generateAndDownload,
@@ -52,14 +52,12 @@ import {
   ToothSelection,
   finalizarAtendimento,
   EncaminhamentoMedico,
-  encaminharAtendimento
+  encaminharAtendimento,
+  atualizarTriagem
 } from '@/services/atendimentoService'
 
 import Odontograma from '../componentes/Odontograma'
-
-// NOVO: componente de prescrição
 import PrescricaoEditor from '../componentes/PrescricaoEditor'
-import { mapReceitaLinhas } from '@/utils/prescricao'
 import EncaminharModal from '@/components/EncaminharModal'
 
 // --------------------
@@ -87,6 +85,7 @@ export default function AtendimentoConvencionalPage() {
   const { idFila } = useParams<{ idFila: string }>()
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
+  const [atualizarTriagemDados, setAtualizarTriagemDados] = useState<AtualizarTriagem>()
   const [evolucao, setEvolucao] = useState<string>('')
 
   // mostrar/ocultar odontograma (quando procedimento id === 4)
@@ -328,14 +327,28 @@ export default function AtendimentoConvencionalPage() {
       setProcedimentos(p)
       setExames(e)
       setEspecialidades(esp)
+      
+      const dados: AtualizarTriagem = {
+        id: a.triagem!.id,
+        peso: a.triagem!.peso.toLocaleString(),        
+        altura: a.triagem!.altura.toLocaleString(),
+        temperatura: a.triagem!.temperatura.toLocaleString(),
+        alergias: a.triagem!.alergias,
+        comorbidades: a.triagem!.comorbidades,
+        fc: a.triagem!.fc,
+        pa: a.triagem!.pa,
+        fr: a.triagem!.fr,
+        sato2: a.triagem!.sato2,
+        queixa: a.triagem!.queixa,
+      }
+      setAtualizarTriagemDados(dados)
       if (userEspecialidade && userTipoAtendimento) {
         const selecionados = p.filter(
           proc => proc.especialidade_id == userEspecialidade
         )
 
-        const idEspecialidade = userTipoAtendimento === 'medico' ? 1 : 2
         const relacionados = p.filter(
-          proc => proc.especialidade_id == idEspecialidade
+          proc => proc.id == (userTipoAtendimento === 'medico' ? 3 : 4)
         )
 
         const unicos = [...selecionados, ...relacionados].filter(
@@ -365,7 +378,7 @@ export default function AtendimentoConvencionalPage() {
       debounce((data: any) => {
         try {
           localStorage.setItem(lsKey, JSON.stringify(data))
-        } catch {}
+        } catch { }
       }, 500),
     [lsKey]
   )
@@ -386,7 +399,7 @@ export default function AtendimentoConvencionalPage() {
       if ((data.selectedProceds ?? []).some((p: Procedimento) => p.id === 4)) {
         setOdontogramaOpen(true)
       }
-    } catch {}
+    } catch { }
   }, [lsKey])
 
   // salvar sempre que algo relevante mudar
@@ -426,7 +439,7 @@ export default function AtendimentoConvencionalPage() {
       const especialidadedDesc =
         especialidades.find(e => e.id === userEspecialidade)?.nome ?? ''
 
-        // console.log(prescricoes);
+      // console.log(prescricoes);
       const payload = {
         paciente_nome: atendimento.paciente.nome,
         data_nascimento: safeDateLabel(atendimento.paciente.dataNascimento),
@@ -437,7 +450,7 @@ export default function AtendimentoConvencionalPage() {
         // AGORA: array de strings pronto pro template
         medicacoes: prescricoes
       }
-      
+
       await generateAndDownload('/api/receituario-html', payload, 'receituario')
       toast.message('Receituário gerado com sucesso!')
     } catch (e: any) {
@@ -500,7 +513,7 @@ export default function AtendimentoConvencionalPage() {
       setDirty(false)
       try {
         localStorage.removeItem(lsKey)
-      } catch {}
+      } catch { }
       toast.success('Atendimento realizado!')
       router.push('/atendimento')
     } catch {
@@ -557,6 +570,30 @@ export default function AtendimentoConvencionalPage() {
       toast.success('Atendimento encaminhado!')
     } catch {
       toast.error('Encaminhamento do atendimento falhou!')
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  const handleUpdateTriagem = async (dados: AtualizarTriagem) => {
+    // const dadosParaSalvar: AtualizarTriagem = {
+    //   id: dados.id,
+    //   queixa: dados.queixa,
+    //   fr: dados.fr,
+    //   sato2: dados.sato2,
+    //   pa: dados.pa,
+    //   fc: dados.fc,
+    //   comorbidades: dados.comorbidades,
+    //   alergias: dados.alergias,
+    //   peso: dados.peso,
+    //   altura: dados.altura,
+    //   temperatura: dados.temperatura,
+    // }
+    try {
+      await atualizarTriagem(dados)
+      toast.success('Dados da triagem atualizados!')
+    } catch {
+      toast.error('Atualizar triagem falhou!')
     } finally {
       setCarregando(false)
     }
@@ -652,10 +689,10 @@ export default function AtendimentoConvencionalPage() {
                     Informações do Paciente e Triagem
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      {/* Paciente */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
+                    <div className="px-4 pb-4 grid grid-cols-1 gap-6">
+                      {/* Linha 1: Dados do Paciente */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
                           <Label>Nome</Label>
                           <Input
                             value={atendimento?.paciente?.nome || ''}
@@ -667,9 +704,7 @@ export default function AtendimentoConvencionalPage() {
                           <Label>Data de Nascimento</Label>
                           <Input
                             value={
-                              safeDateLabel(
-                                atendimento?.paciente?.dataNascimento
-                              ) || ''
+                              safeDateLabel(atendimento?.paciente?.dataNascimento) || ''
                             }
                             readOnly
                             disabled
@@ -685,36 +720,97 @@ export default function AtendimentoConvencionalPage() {
                         </div>
                       </div>
 
-                      <div className="hidden lg:block" />
-
-                      {/* Triagem */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                         <div>
-                          <Label>PA</Label>
+                          <Label>Situação / Queixa Principal</Label>
+                          <Textarea
+                            value={atualizarTriagemDados!.queixa || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, queixa: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                      </div>
+
+                      {/* Linha 2: Dados da Triagem */}
+                      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                        <div>
+                          <Label>Peso</Label>
                           <Input
-                            value={atendimento?.triagem?.pa || ''}
-                            readOnly
-                            disabled
+                            value={atualizarTriagemDados!.peso || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, peso: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
                           />
                         </div>
                         <div>
+                          <Label>Altura</Label>
+                          <Input
+                            value={atualizarTriagemDados!.altura || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, altura: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                        <div>
+                          <Label>Temp.</Label>
+                          <Input
+                            value={atualizarTriagemDados!.temperatura || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, temperatura: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                        <div>
+                          <Label>FR</Label>
+                          <Input
+                            value={atualizarTriagemDados!.fr || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, fr: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                        <div>
+                          <Label>SATO²</Label>
+                          <Input
+                            value={atualizarTriagemDados!.sato2 || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, sato2: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                        <div>
+                          <Label>PA</Label>
+                          <Input
+                            value={atualizarTriagemDados!.pa || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, pa: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                        <div>
+                          <Label>FC</Label>
+                          <Input
+                            value={atualizarTriagemDados!.fc || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, fc: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
+                          />
+                        </div>
+                      </div>                        
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
                           <Label>Comorbidades</Label>
                           <Input
-                            value={atendimento?.triagem?.comorbidades || ''}
-                            readOnly
-                            disabled
+                            value={atualizarTriagemDados!.comorbidades || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, comorbidades: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
                           />
                         </div>
                         <div>
                           <Label>Alergia</Label>
                           <Input
-                            value={atendimento?.triagem?.alergias || ''}
-                            readOnly
-                            disabled
+                            value={atualizarTriagemDados!.alergias || ''}
+                            onChange={e => setAtualizarTriagemDados({...atualizarTriagemDados!, alergias: e.target.value})}
+                            onBlur={ () => handleUpdateTriagem(atualizarTriagemDados!) }
                           />
                         </div>
-
-                        <div className="col-span-2 flex flex-wrap gap-2 mt-2">
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="col-span-3 flex flex-wrap gap-2 mt-2">
                           {atendimento?.triagem?.comorbidades && (
                             <Badge className="bg-amber-600">Comorbidade</Badge>
                           )}
@@ -730,6 +826,24 @@ export default function AtendimentoConvencionalPage() {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+            </section>
+
+            {/* Section — Evolução (w-full) */}
+            <section className="border rounded-lg">
+              <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
+                Evolução
+              </div>
+              <div className="px-4 pb-4 mt-2">
+                <Textarea
+                  className="w-full min-h-[140px]"
+                  value={evolucao}
+                  onChange={e => {
+                    setEvolucao(e.target.value)
+                    setDirtyDebounced()
+                  }}
+                  placeholder="Descreva evolução, condutas e orientações clínicas..."
+                />
+              </div>
             </section>
 
             {/* Section 2 — Procedimentos & CIDs */}
@@ -936,24 +1050,6 @@ export default function AtendimentoConvencionalPage() {
                 </div>
               </section>
             )}
-
-            {/* Section — Evolução (w-full) */}
-            <section className="border rounded-lg">
-              <div className="px-4 py-3 text-base mt-2 font-semibold border-b">
-                Evolução
-              </div>
-              <div className="px-4 pb-4 mt-2">
-                <Textarea
-                  className="w-full min-h-[140px]"
-                  value={evolucao}
-                  onChange={e => {
-                    setEvolucao(e.target.value)
-                    setDirtyDebounced()
-                  }}
-                  placeholder="Descreva evolução, condutas e orientações clínicas..."
-                />
-              </div>
-            </section>
 
             {/* Section — Prescrição & Exames (vertical: Prescrição acima, Exames abaixo) */}
             <section className="border rounded-lg">

@@ -1,5 +1,5 @@
 import { API_BASE, headers } from "@/utils/constants";
-import { AtendimentoFluxo } from "@/types/Fluxo";
+import { AtendimentoFluxo, AtualizarTriagem } from "@/types/Fluxo";
 import { Atendimento, FaceKey, ToothSelection, EncaminhamentoMedico } from "@/types/Atendimento";
 
 const caminho = "Atendimentos";
@@ -58,4 +58,16 @@ export async function encaminharAtendimento(encaminhamento: EncaminhamentoMedico
   }
 }
 
-export type { AtendimentoFluxo, FaceKey, ToothSelection, EncaminhamentoMedico };
+export async function atualizarTriagem(triagem: AtualizarTriagem) {
+  const res = await fetch(`${API_BASE}/api/${caminho}/triagem`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify(triagem),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`Erro ${res.status} ao atualizar triagem: ${msg}`);
+  }
+}
+
+export type { AtendimentoFluxo, FaceKey, ToothSelection, EncaminhamentoMedico, AtualizarTriagem };

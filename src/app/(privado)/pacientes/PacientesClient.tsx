@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -14,7 +13,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PatientCard } from './components/PatientCard'
 import { SearchIcon, SquarePlus, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { getAllPatients, Patient } from '@/services/patientService'
 
 function stripDiacritics(s: string) {
@@ -123,7 +121,7 @@ export default function PacientesClient() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-y-auto">
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold">
@@ -198,20 +196,6 @@ export default function PacientesClient() {
             }}
             onUpdate={handleUpdate}
           />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function PageSkeleton() {
-  return (
-    <div className="p-6 space-y-6">
-      <div className="h-8 w-64 bg-muted rounded" />
-      <div className="h-10 w-full bg-muted rounded" />
-      <div className="grid gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
         ))}
       </div>
     </div>

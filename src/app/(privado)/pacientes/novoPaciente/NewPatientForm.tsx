@@ -957,7 +957,7 @@ export default function NovoPacientePage() {
       </Card>
 
       {true && (<Dialog open={isModalResponsavelOpen} onOpenChange={setModalResponsavelOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-4x1 min-w-[600px]">
           <DialogHeader>
             <DialogTitle>Pacientes</DialogTitle>
           </DialogHeader>

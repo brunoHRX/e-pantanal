@@ -9,8 +9,9 @@ export type TriagemFormData = {
     especialidades: Especialidade[]
     situacao: string
     sinaisVitais: {
-        peso: string
-        temperatura: string
+        peso: number
+        altura: number
+        temperatura: number
         fr: string
         sato2: string
         pa: string

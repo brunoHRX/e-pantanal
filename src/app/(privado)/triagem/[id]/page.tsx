@@ -73,8 +73,9 @@ export default function TriagemPage() {
       especialidades: [], // << objetos
       situacao: '',
       sinaisVitais: {
-        peso: '',
-        temperatura: '',
+        peso: 0,
+        altura: 0,
+        temperatura: 0,
         fr: '',
         sato2: '',
         pa: '',
@@ -165,7 +166,17 @@ export default function TriagemPage() {
     setLoading(true)
     setError(null)
     try {        
-      await submitTriagem(data)
+      const sinaisVitaisNormalizados = {
+        ...data.sinaisVitais,
+        peso: parseFloat(String(data.sinaisVitais.peso).replace(',', '.')),
+        altura: parseFloat(String(data.sinaisVitais.altura).replace(',', '.')),
+        temperatura: parseFloat(String(data.sinaisVitais.temperatura).replace(',', '.')),
+      }
+      const payload = {
+        ...data,
+        sinaisVitais: sinaisVitaisNormalizados,
+      }
+      await submitTriagem(payload)
       toast.success('Triagem salva!')      
     } catch (e) {
       toast.success((e as Error).message || 'Falha ao salvar triagem.')
@@ -292,13 +303,20 @@ export default function TriagemPage() {
             {/* Sinais Vitais (Peso primeiro) */}
             <div>
               <Label>Sinais Vitais e Parâmetros Relevantes</Label>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mt-2">
                 <div className="md:col-span-1 col-span-2">
                   <Label>Peso (kg)</Label>
                   <Input {...register('sinaisVitais.peso')} className="mt-2" />
                 </div>
                 <div>
-                  <Label>Temperatura (°C)</Label>
+                  <Label>Altura. (m)</Label>
+                  <Input
+                    {...register('sinaisVitais.altura')}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label>Temp. (°C)</Label>
                   <Input
                     {...register('sinaisVitais.temperatura')}
                     className="mt-2"

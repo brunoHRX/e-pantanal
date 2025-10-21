@@ -50,6 +50,7 @@ export type TriagemFluxo = {
     temperatura: number,
     fr: string,
     sato2: string,
+    altura: number,
     pa: string,
     fc: string,
     comorbidades: string,
@@ -78,4 +79,18 @@ export type PatientProfissionaisAtivos = {
 
 export type EspecialidadeProfissionaisAtivos = {
     nome?: string
+}
+
+export type AtualizarTriagem = {
+    id: number,
+    peso: string,
+    queixa: string,
+    temperatura: string,
+    fr: string,
+    sato2: string,
+    altura: string,
+    pa: string,
+    fc: string,
+    comorbidades: string,
+    alergias: string,
 }
