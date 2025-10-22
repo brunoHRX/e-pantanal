@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,16 +19,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import {
   Search,
   Eye,
   Send,
-  Trash2,
-  MoreVertical,
   X,
   Filter
 } from 'lucide-react'
@@ -41,7 +36,8 @@ import {
   encaminharPaciente,
   removerPaciente,
   ProfissionaisAtivos,
-  getProfissionais
+  getProfissionais,
+  AtendimentoFilas
 } from '@/services/fluxoService'
 import { getAll as getEspecialidades } from '@/services/especialidadeService'
 import {
@@ -55,19 +51,47 @@ import {
   waitingTime
 } from '@/utils/functions'
 import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { DataTable } from '@/components/ui/data-table'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import {
+  EncaminhamentoMedico,
+  encaminharAtendimento,
+  removerAtendimento
+} from '@/services/atendimentoService'
 
 import { TriagemViewDialog } from '@/components/TriagemViewDialog'
 import { QueueLegend } from '@/components/QueueLegend'
 import { ActiveProfessionalsBar } from '@/components/ActiveProfessionalsBar'
+import { ColumnDef } from '@tanstack/react-table'
+import EncaminharModal from '@/components/EncaminharModal'
 
 export default function FilaEsperaPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AtendimentoFluxo[]>([])
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
   const [filas, setFilas] = useState<FilasFluxo>()
-  const [triagemOpen, setTriagemOpen] = useState(false)
-  const [triagemSelecionada, setTriagemSelecionada] =
-    useState<AtendimentoFluxo>()
+  const [triagemOpen, setTriagemOpen] = useState(false)  
+  const [loading, setLoading] = useState(false)  
+  const [triagemSelecionada, setTriagemSelecionada] = useState<AtendimentoFluxo>()  
+  const [isModalAtendimentosOpen, setModalAtendimentosOpen] = useState(false)
+  const [atendimentos, setAtendimentos] = useState<AtendimentoFilas[]>([])
+  const [deleteId, setDeleteId] = useState<number | null>(null)  
+  const [encOpen, setEncOpen] = useState(false)
 
   useEffect(() => {
     searchEspecialidades()
@@ -190,6 +214,68 @@ export default function FilaEsperaPage() {
     } catch (err) {
       toast.error((err as Error).message)
       setProfissionais([])
+    }
+  }
+
+  const handleAtendimentos = function (atendimento: AtendimentoFluxo) {
+    setTriagemSelecionada(atendimento)
+    setAtendimentos(atendimento.filas!)
+    setModalAtendimentosOpen(true)
+  }
+
+  const colunas = useMemo<ColumnDef<AtendimentoFilas>[]>(
+    () => [
+      { accessorKey: 'id', header: 'ID' },
+      { accessorKey: 'fila.especialidade.nome', header: 'Nome' },
+      { accessorKey: 'atendido', header: 'Atendido', accessorFn: (row) => row.atendido == 1 ? 'Sim' : 'Não' },
+      {
+        id: 'actions',
+        header: 'Ações',
+        cell: ({ row }) => (
+          row.original.atendido == 0 && (<div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"              
+              onClick={e => {
+                e.stopPropagation()
+                setDeleteId(row.original.id)
+              }}
+            >
+              Remover
+            </Button>
+          </div>)
+        )
+      }
+    ],
+    []
+  )
+
+  async function handleDeleteConfirmed() {
+    if (!deleteId) return    
+    try {
+      await removerAtendimento(deleteId)     
+      toast.success(`Registro excluído`)
+      setDeleteId(null)
+      await runSearch()   
+    } catch (err) {
+      toast.error(`Erro ao excluir registro`)
+    } finally {
+      setModalAtendimentosOpen(false)
+    }
+  }
+  
+  const handleEncaminhamentoMedico = async (
+    encaminhamento: EncaminhamentoMedico
+  ) => {
+    setLoading(true)
+    try {
+      await encaminharAtendimento(encaminhamento)
+      toast.success('Atendimento encaminhado!')
+      await runSearch()   
+    } catch {
+      toast.error('Encaminhamento do atendimento falhou!')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -417,6 +503,20 @@ export default function FilaEsperaPage() {
                       </TooltipTrigger>
                       <TooltipContent>Visualizar Triagem</TooltipContent>
                     </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3"
+                          onClick={() => handleAtendimentos(p)}
+                          aria-label="Gerenciar atendimentos"
+                        >
+                          Atendimentos
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Gerenciar atendimentos</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {/* Mobile: somente “Visualizar triagem” */}
@@ -479,6 +579,53 @@ export default function FilaEsperaPage() {
           atendimento={triagemSelecionada}
         />
       )}
-    </div>
+
+      <Dialog open={isModalAtendimentosOpen} onOpenChange={setModalAtendimentosOpen}>
+        <DialogContent className="max-w-4x1 min-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Atendimentos</DialogTitle>
+          </DialogHeader>
+          <DataTable columns={colunas} data={atendimentos} loading={loading} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-3"
+            onClick={() => setEncOpen(true)}
+            aria-label="Visualizar triagem"
+          >
+            <Send className="h-4 w-4 mr-1" />
+            Encaminhar
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <EncaminharModal
+        open={encOpen}
+        onOpenChange={setEncOpen}
+        atendimentoId={triagemSelecionada?.id ?? 0}
+        pacienteId={triagemSelecionada?.paciente?.id ?? 0}
+        especialidades={especialidades}
+        onConfirm={async payload => {
+          handleEncaminhamentoMedico(payload)
+        }}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir atendimento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o registro #{deleteId}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteId(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirmed} className="bg-destructive text-white hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>    
   )
 }

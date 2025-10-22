@@ -4,6 +4,7 @@ export type Patient = {
     complemento: string,
     cor: string,
     cpf: string,
+    sus: string,
     dataNascimento: string,
     desconheceMae: boolean,
     desconhecePai: boolean,

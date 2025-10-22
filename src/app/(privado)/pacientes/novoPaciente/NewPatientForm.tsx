@@ -138,6 +138,7 @@ export default function NovoPacientePage() {
       sex: '',
       cor: '',
       etnia: '',
+      sus: '',
       filiacao1: '',
       desconheceMae: false,
       filiacao2: '',
@@ -223,9 +224,13 @@ export default function NovoPacientePage() {
     setLoading(true)
     getPatientById(id)
       .then(data => {
-        console.log(data);
-        
-        form.reset(data)
+        const parsedData = {
+          ...data,
+          dataNascimento: data.dataNascimento
+            ? data.dataNascimento.split('T')[0]
+            : ''
+        }
+        form.reset(parsedData)
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -301,12 +306,12 @@ export default function NovoPacientePage() {
               <div>
                 <h3 className="font-semibold text-lg mb-2">Dados Pessoais</h3>
                 <Separator className="mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <FormField
                     control={form.control}
                     name="nome"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className='col-span-2'>
                         <FormLabel>Nome Completo</FormLabel>
                         <FormControl>
                           <Input {...field} className="mt-1" />
@@ -327,6 +332,25 @@ export default function NovoPacientePage() {
                         <FormMessage />
                       </FormItem>
                     )}
+                  />   
+                  <FormField
+                    control={form.control}
+                    name="pne"
+                    render={({ field }) => (
+                      <FormItem className="w-full flex flex-col mt-6">
+                        <FormControl>
+                          <div className="flex w-full gap-2">
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="scale-110"
+                            />
+                            <FormLabel className="text-center">PNE</FormLabel>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mt-4 items-center">
@@ -337,6 +361,24 @@ export default function NovoPacientePage() {
                       <FormItem className="w-full flex flex-col items-center">
                         <FormLabel className="mb-1 text-center w-full">
                           CPF
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            className="mt-1 w-full text-center"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />              
+                  <FormField
+                    control={form.control}
+                    name="sus"
+                    render={({ field }) => (
+                      <FormItem className="w-full flex flex-col items-center">
+                        <FormLabel className="mb-1 text-center w-full">
+                          SUS
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -456,26 +498,7 @@ export default function NovoPacientePage() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="pne"
-                    render={({ field }) => (
-                      <FormItem className="w-full flex flex-col mt-6">
-                        <FormControl>
-                          <div className="flex w-full gap-2">
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="scale-110"
-                            />
-                            <FormLabel className="text-center">PNE</FormLabel>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  /> 
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                   {/* Nome da Mãe */}

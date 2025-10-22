@@ -57,6 +57,16 @@ export async function encaminharAtendimento(encaminhamento: EncaminhamentoMedico
     throw new Error(`Erro ${res.status} ao finalizar ${elemento_singular}: ${msg}`);
   }
 }
+export async function removerAtendimento(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/${caminho}/remover/${id}`, {
+    method: "DELETE",
+    headers: headers()
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`Erro ${res.status} ao remover ${elemento_singular}: ${msg}`);
+  }
+}
 
 export async function atualizarTriagem(triagem: AtualizarTriagem) {
   const res = await fetch(`${API_BASE}/api/${caminho}/triagem`, {
