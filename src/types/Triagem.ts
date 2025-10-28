@@ -28,3 +28,27 @@ export type TriagemFormData = {
     usuario?: Usuario
     prioridade: string
 }
+
+export type TriagemUpdate = {
+    id: number
+    nomePaciente: string
+    idade: string
+    prontuario: number
+    especialidades: Especialidade[]
+    situacao: string
+    peso: number
+    altura: number
+    temperatura: number
+    fr: string
+    sato2: string
+    pa: string
+    fc: string
+    comorbidadeDesc?: string
+    obsComorbidade?: string
+    medicacao24h: string
+    quaisAlergias?: string
+    coletadoPor: string
+    dataHora: string
+    usuario?: Usuario
+    prioridade: string
+}

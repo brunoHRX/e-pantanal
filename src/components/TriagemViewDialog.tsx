@@ -32,6 +32,15 @@ export function TriagemViewDialog({
     atendimento.triagem?.comorbidades !== '' ? true : false
   const possuiAlergias = atendimento.triagem?.alergias !== '' ? true : false
 
+  async function handleEditar() {
+    const id = atendimento.paciente.id
+    const triagemId = atendimento.triagem?.id ?? 0
+    if (triagemId !== 0) {
+      const url = `/triagem/novo?id=${id}&triagemId=${triagemId}`;
+      window.open(url, '_blank');
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* SAFE: largura/altura limitadas + scroll interno + sem overflow horizontal */}
@@ -213,6 +222,9 @@ export function TriagemViewDialog({
             </section>
 
             <div className="flex justify-end">
+              <Button variant="outline" onClick={() => handleEditar()}>
+                Editar
+              </Button>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Fechar
               </Button>

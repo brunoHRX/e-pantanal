@@ -14,6 +14,7 @@ import { getPatientById, TriagemFormData, Especialidade, submitTriagem } from '@
 import { differenceInMonths, parseISO, isValid } from 'date-fns'
 import { X } from 'lucide-react'
 import { getAll } from '@/services/especialidadeService'
+import { getTriagemById, updateTriagem } from '@/services/triagemService'
 
 /** ===== Helpers ===== **/
 function safeDate(iso?: string) {
@@ -55,11 +56,16 @@ export default function TriagemPage() {
   const [dataHora, setDataHora] = useState<string | null>(null)
   const [allEspecialidades, setallEspecialidades] = useState<Especialidade[]>([])
   const searchParams = useSearchParams()
-  const params = useParams() as { id?: string }
+  const params = useParams() as { id?: string, triagemId?: number }
 
   const pacienteId = useMemo(() => {
     const q = searchParams.get('id')
-    return Number(q ?? params?.id ?? NaN)
+    return Number(q ?? params?.id ?? 0)
+  }, [searchParams, params])
+
+  const triagemId = useMemo(() => {
+    const q = searchParams.get('triagemId')
+    return Number(q ?? params?.triagemId ?? 0)
   }, [searchParams, params])
 
   const [loading, setLoading] = useState(false)
@@ -67,6 +73,7 @@ export default function TriagemPage() {
 
   const form = useForm<TriagemFormData>({
     defaultValues: {
+      id: 0,
       nomePaciente: '',
       idade: '',
       prontuario: 0,
@@ -100,14 +107,7 @@ export default function TriagemPage() {
   // select controlado por id do preset
   const [especialidadeSelecionadaId, setEspecialidadeSelecionadaId] = useState<number>()
 
-  async function handleLoadEspecialidades() {    
-    const resEspecialidades = await getAll();
-    const filteredEsp = resEspecialidades.filter(e => e.id !=  3 && e.id !=  8)
-    setallEspecialidades(filteredEsp);
-  }
-
   useEffect(() => {
-    handleLoadEspecialidades();
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
       const user = JSON.parse(storedUser);
@@ -115,6 +115,9 @@ export default function TriagemPage() {
     }
     setDataHora(new Date().toLocaleString('pt-BR'));
     async function load() {
+      const resEspecialidades = await getAll();
+      const filteredEsp = resEspecialidades.filter(e => e.id != 3 && e.id != 8)
+      setallEspecialidades(filteredEsp);
       if (!Number.isFinite(pacienteId)) {
         setError('ID do paciente não informado.')
         return
@@ -132,6 +135,36 @@ export default function TriagemPage() {
           coletadoPor: userName,
           dataHora: new Date().toLocaleString('pt-BR')
         }))
+
+        if (triagemId > 0) {
+          const triagemData = await getTriagemById(triagemId);
+          reset(prev => ({
+            ...prev,
+            id: triagemData.id,
+            situacao: triagemData.situacao,
+            sinaisVitais: {
+              peso: triagemData.peso,
+              altura: triagemData.altura,
+              temperatura: triagemData.temperatura,
+              fr: triagemData.fr,
+              sato2: triagemData.sato2,
+              pa: triagemData.pa,
+              fc: triagemData.fc
+            },
+            comorbidadeOp: triagemData.comorbidadeDesc != "" ? 'Sim' : 'Não Possui',
+            comorbidadeDesc: triagemData.comorbidadeDesc,
+            medicacao24h: triagemData.medicacao24h,
+            alergia: triagemData.quaisAlergias != "" ? 'sim' : 'não',
+            quaisAlergias: triagemData.quaisAlergias,
+            prioridade: triagemData.prioridade,
+            coletadoPor: userName,
+            dataHora: new Date().toLocaleString('pt-BR'),
+          }))
+          const filtered = triagemData.especialidades.filter(e => e.id != 3 && e.id != 8)
+          setValue('especialidades', [...especialidades, ...filtered]), {
+            shouldDirty: true
+          };
+        }
       } catch (e) {
         setError((e as Error).message || 'Falha ao carregar paciente.')
       } finally {
@@ -165,7 +198,7 @@ export default function TriagemPage() {
   async function onSubmit(data: TriagemFormData) {
     setLoading(true)
     setError(null)
-    try {        
+    try {
       const sinaisVitaisNormalizados = {
         ...data.sinaisVitais,
         peso: parseFloat(String(data.sinaisVitais.peso).replace(',', '.')),
@@ -176,8 +209,12 @@ export default function TriagemPage() {
         ...data,
         sinaisVitais: sinaisVitaisNormalizados,
       }
-      await submitTriagem(payload)
-      toast.success('Triagem salva!')      
+      if (data.id != 0) {
+        await updateTriagem(payload)
+      } else {
+        await submitTriagem(payload)
+      }
+      toast.success('Triagem salva!')
     } catch (e) {
       toast.success((e as Error).message || 'Falha ao salvar triagem.')
     } finally {
