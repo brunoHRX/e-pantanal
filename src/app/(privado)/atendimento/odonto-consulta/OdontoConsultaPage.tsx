@@ -17,14 +17,14 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus } from 'lucide-react'
 
-import Odontograma from '../componntes/Odontograma'
+import Odontograma from './componntes/Odontograma'
 import {
   FACES,
   PROCEDIMENTOS_ODONTO,
   type FaceKey,
   type ProcedimentoOdonto,
   type ToothSelectionsMap
-} from '../componntes/OdontogramaQuadrante'
+} from './componntes/OdontogramaQuadrante'
 
 import {
   Dialog,

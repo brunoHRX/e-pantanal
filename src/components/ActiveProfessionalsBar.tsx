@@ -85,9 +85,7 @@ export function ActiveProfessionalsBar({
 
 /* === Item da lista (1 profissional por linha, responsivo e à prova de overflow) === */
 function ProfessionalRow({ prof }: { prof: ProfissionaisAtivos }) {
-  const elapsed = prof.ultimo_atendimento
-    ? useElapsed(prof.ultimo_atendimento)
-    : '-'
+  const elapsed = useElapsed(prof.ultimo_atendimento ?? null);
   const isAtendendo = !!prof.atendendo
   const nomeProf = prof?.usuario?.nome ?? 'Profissional'
   const nomeEsp = prof?.usuario?.especialidade?.nome ?? 'Especialidade'
@@ -135,17 +133,27 @@ function StatusBadge({ status }: { status: boolean }) {
 }
 
 /** Cronômetro HH:MM:SS desde uma data ISO */
-function useElapsed(sinceISO: string) {
-  const [now, setNow] = React.useState<Date>(() => new Date())
+function useElapsed(sinceISO: string | null) {
+  const [now, setNow] = React.useState<Date>(() => new Date());
+
   React.useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const since = new Date(sinceISO)
-  const diff = Math.max(0, Math.floor((now.getTime() - since.getTime()) / 1000))
-  const h = Math.floor(diff / 3600)
-  const m = Math.floor((diff % 3600) / 60)
-  const s = diff % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(h)}:${pad(m)}:${pad(s)}`
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!sinceISO) return "-";
+
+  const since = new Date(sinceISO);
+  const diff = Math.max(
+    0,
+    Math.floor((now.getTime() - since.getTime()) / 1000)
+  );
+
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }

@@ -38,10 +38,10 @@ import { QueueLegend } from '@/components/QueueLegend'
 // =====================
 // Página
 // =====================
-export default function FilaDeAtendimentoPage() {
+export default function FilaDeAtendimentoPage() {  
   const router = useRouter()
   const [userName, setUserName] = useState<string>("");
-  const [userId, setUserId] = useState<Number>();
+  const [userId, setUserId] = useState<number>();
   const [userFilas, setUserFilas] = useState<number[]>([]);
   const [results, setResults] = useState<AtendimentoFluxo[]>([])
   const [filtroPrioridade, setFiltroPrioridade] = useState<string[]>([])
@@ -81,7 +81,7 @@ export default function FilaDeAtendimentoPage() {
         const nomePaciente = stripDiacritics((atendimento.paciente?.nome ?? '').toLowerCase())
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
 
-        var matchFilas = false;
+        let matchFilas = false;
         if (atendimento.filas) 
         {
           atendimento.filas.forEach(fila => {
@@ -91,7 +91,7 @@ export default function FilaDeAtendimentoPage() {
 
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
 
-        var emAtendimento = atendimento.usuario ? true : false;
+        let emAtendimento = atendimento.usuario ? true : false;
         if (atendimento.usuario) {
           if (atendimento.usuario_id == userId) emAtendimento = false;
         }
@@ -117,7 +117,7 @@ export default function FilaDeAtendimentoPage() {
       toast.error((err as Error).message)
     } finally {
       setLoading(false)
-      router.push(`/atendimento/convencional/${atendimento}`)
+      router.push(`/atendimento/convencional?id=${atendimento}`)
     }
   }
 

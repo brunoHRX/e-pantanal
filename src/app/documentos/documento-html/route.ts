@@ -7,7 +7,7 @@ import path from "node:path";
 import { renderDocumentoHTML, type ReceitaPayload } from "@/lib/pdf/documento-generico-template";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
 // Lê arquivo em /public e retorna como data URI base64
 async function fileToDataUri(relPath: string) {

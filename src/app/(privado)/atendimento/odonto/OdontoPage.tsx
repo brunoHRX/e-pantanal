@@ -16,8 +16,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ArrowLeft, Printer, CheckCircle2, XCircle } from 'lucide-react'
-import Odontograma from '../componentes/Odontograma'
-import type { ToothSelectionsMap } from '../componentes/OdontogramaQuadrante'
+import Odontograma from './componentes/Odontograma'
+import type { ToothSelectionsMap } from './componentes/OdontogramaQuadrante'
 
 // --------------------
 // Tipos

@@ -25,9 +25,9 @@ function escapeHtml(s: string) {
 }
 
 export function renderReceituarioHTML(data: ReceitaPayload) {
-  var meds = "";
+  let meds = "";
   data.medicacoes.forEach(element => {
-    let underscores = "_".repeat(Math.max(0, 70 - escapeHtml(element.medicamento.nome).length - `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length))
+    const underscores = "_".repeat(Math.max(0, 70 - escapeHtml(element.medicamento.nome).length - `${element.duracao} ${escapeHtml(element.unidade_medida)}`.length))
     meds += `<li>${escapeHtml(element.medicamento.nome)}${underscores}${element.duracao} ${escapeHtml(element.unidade_medida)}</li>`;
     meds += `<span style="margin-bottom: 5px;">${escapeHtml(element.observacao)}</span>`;
   })

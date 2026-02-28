@@ -66,7 +66,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   }, [router])
 
   // Rota pública
-  if (pathname === '/login') {
+  if (pathname === '/login/') {
     return <>{children}</>
   }
 

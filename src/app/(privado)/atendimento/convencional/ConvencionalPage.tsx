@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,8 +56,8 @@ import {
   atualizarTriagem
 } from '@/services/atendimentoService'
 
-import Odontograma from '../componentes/Odontograma'
-import PrescricaoEditor from '../componentes/PrescricaoEditor'
+import Odontograma from './componentes/Odontograma'
+import PrescricaoEditor from './componentes/PrescricaoEditor'
 import EncaminharModal from '@/components/EncaminharModal'
 
 // --------------------
@@ -72,6 +72,8 @@ const debounce = (fn: (...a: any[]) => void, ms = 500) => {
 }
 
 export default function AtendimentoConvencionalPage() {
+  const searchParams = useSearchParams()
+  const idFila = searchParams.get('id')
   const router = useRouter()
   const [userName, setUserName] = useState('')
   const [userCRM, setCRM] = useState('')
@@ -82,7 +84,7 @@ export default function AtendimentoConvencionalPage() {
   // Estados principais
   // --------------------
 
-  const { idFila } = useParams<{ idFila: string }>()
+  // const { idFila } = useParams<{ idFila: string }>()
   const [carregando, setCarregando] = useState(true)
   const [atendimento, setAtendimento] = useState<AtendimentoFluxo>()
   const [atualizarTriagemDados, setAtualizarTriagemDados] = useState<AtualizarTriagem>()
@@ -451,7 +453,7 @@ export default function AtendimentoConvencionalPage() {
         medicacoes: prescricoes
       }
 
-      await generateAndDownload('/api/receituario-html', payload, 'receituario')
+      await generateAndDownload('/documentos/receituario-html', payload, 'receituario')
       toast.message('Receituário gerado com sucesso!')
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao gerar Receituário')
@@ -471,11 +473,36 @@ export default function AtendimentoConvencionalPage() {
           crm: userCRM,
           especialidade: especialidadedDesc
         }
-        await generateAndDownload('/api/documento-html', payload, 'documento')
+        await generateAndDownload('/documentos/documento-html', payload, 'documento')
         toast.message('Documento gerado com sucesso!')
       }
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao gerar Documento')
+    }
+  }
+
+  const handleImprimirAtestado = async () => {
+    try {
+      if (atendimento) {
+        const entrada = new Date(atendimento.entrada)
+        entrada.setDate(entrada.getDate() + 1)
+
+        const inicio_afastamento = safeDateLabel(entrada.toISOString())
+        const payload = {
+          paciente_nome: atendimento.paciente.nome,
+          data_atendimento: safeDateLabel(atendimento.entrada), // dd/mm/aaaa
+          // dias_afastamento: '3',
+          inicio_afastamento: inicio_afastamento,
+          // diagnostico: 'Gripe viral',
+          // cid: 'J11',
+          medico_nome: 'Dr(a). ' + userName,
+          crm: userCRM
+        }
+        await generateAndDownload('/documentos/atestado-html', payload, 'atestado')
+        toast.message('Atestado gerado com sucesso!')
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao imprimir atestado.')
     }
   }
 
@@ -526,31 +553,6 @@ export default function AtendimentoConvencionalPage() {
   const handleCancelar = () => {
     toast.message('Atendimento cancelado.')
     router.push('/atendimento')
-  }
-
-  const handleImprimirAtestado = async () => {
-    try {
-      if (atendimento) {
-        const entrada = new Date(atendimento.entrada)
-        entrada.setDate(entrada.getDate() + 1)
-
-        const inicio_afastamento = safeDateLabel(entrada.toISOString())
-        const payload = {
-          paciente_nome: atendimento.paciente.nome,
-          data_atendimento: safeDateLabel(atendimento.entrada), // dd/mm/aaaa
-          // dias_afastamento: '3',
-          inicio_afastamento: inicio_afastamento,
-          // diagnostico: 'Gripe viral',
-          // cid: 'J11',
-          medico_nome: 'Dr(a). ' + userName,
-          crm: userCRM
-        }
-        await generateAndDownload('/api/atestado-html', payload, 'atestado')
-        toast.message('Atestado gerado com sucesso!')
-      }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Falha ao imprimir atestado.')
-    }
   }
 
   const handleEncaminhar = async () => {

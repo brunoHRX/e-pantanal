@@ -116,7 +116,7 @@ export default function TriagemPage() {
     setDataHora(new Date().toLocaleString('pt-BR'));
     async function load() {
       const resEspecialidades = await getAll();
-      const filteredEsp = resEspecialidades.filter(e => e.id != 3 && e.id != 8)
+      const filteredEsp = resEspecialidades.filter(e => e.id != 1 && e.id != 2)
       setallEspecialidades(filteredEsp);
       if (!Number.isFinite(pacienteId)) {
         setError('ID do paciente não informado.')

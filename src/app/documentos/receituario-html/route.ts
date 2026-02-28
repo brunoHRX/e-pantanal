@@ -8,7 +8,7 @@ import { renderReceituarioHTML } from "@/lib/pdf/receituario-template";
 // Se seu render já está em outro caminho, ajuste o import acima.
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
 // --- Tipos leves para robustez no parse ---
 type ReceitaMedicamentoLike = {

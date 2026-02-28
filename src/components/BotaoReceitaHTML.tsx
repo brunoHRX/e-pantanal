@@ -20,7 +20,7 @@ export default function BotaoReceitaHTML() {
         ]
       }
 
-      const res = await fetch('/api/receituario-html', {
+      const res = await fetch('/documentos/receituario-html', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' }

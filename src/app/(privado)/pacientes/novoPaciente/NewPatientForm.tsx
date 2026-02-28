@@ -238,7 +238,7 @@ export default function NovoPacientePage() {
   async function onSubmit(data: Patient) {
     setLoading(true)
     try {
-      var pacienteId: number;
+      let pacienteId: number;
       if (id) {
         pacienteId = data.id;
         await updatePatient(data.id, data)

@@ -84,7 +84,7 @@ export function computeFilaStatus(
     at: AtendimentoFluxo,
     f: AtendimentoFilas
   ): BadgeStatus {
-    var response: BadgeStatus = 'pending'
+    let response: BadgeStatus = 'pending'
     if (at.fila_id == f?.fila_id) {
         response = 'active'                 
     }
@@ -96,7 +96,7 @@ export function computeFilaStatus(
 }
 
 export function prioridadeColor(prioridade:string): string {
-    var cor = "";
+    let cor = "";
     switch (prioridade) {
         case "urgente":
             cor = "bg-red-600";
@@ -115,7 +115,7 @@ export function prioridadeColor(prioridade:string): string {
 }
 
 export function prioridadeDesc(prioridade:string): string {
-    var cor = "";
+    let cor = "";
     switch (prioridade) {
         case "urgente":
             cor = "Urgente";

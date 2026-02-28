@@ -194,7 +194,7 @@ function GerarRelatorioDialog({
   async function handleSubmit() {
     try {
       setSubmitting(true)
-      const res = await fetch(`/api/report-html/?format=${form.formato}`, {
+      const res = await fetch(`/documentos/report-html/?format=${form.formato}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

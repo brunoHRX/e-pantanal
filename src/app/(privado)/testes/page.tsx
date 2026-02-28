@@ -50,7 +50,7 @@ export default function ReceituarioTestePage() {
           'Omeprazol 20 mg — 1 cápsula em jejum por 7 dias'
         ]
       }
-      await generateAndDownload('/api/receituario-html', payload, 'receituario')
+      await generateAndDownload('/documentos/receituario-html', payload, 'receituario')
       setMsg('Receituário gerado com sucesso!')
     } catch (e: any) {
       setMsg(e?.message ?? 'Falha ao gerar Receituário')
@@ -73,7 +73,7 @@ export default function ReceituarioTestePage() {
         crm: 'CRM-MS 98765'
         // se quiser assinar/colocar logos via base64, o route já insere pelos arquivos do /public
       }
-      await generateAndDownload('/api/atestado-html', payload, 'atestado')
+      await generateAndDownload('/documentos/atestado-html', payload, 'atestado')
       setMsg('Atestado gerado com sucesso!')
     } catch (e: any) {
       setMsg(e?.message ?? 'Falha ao gerar Atestado')

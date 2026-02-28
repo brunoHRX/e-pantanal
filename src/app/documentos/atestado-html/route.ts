@@ -7,7 +7,7 @@ import path from "node:path";
 import { renderAtestadoHTML, type AtestadoPayload } from "@/lib/pdf/atestado-template";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
 // Lê arquivo em /public e retorna como data URI base64
 async function fileToDataUri(relPath: string) {
