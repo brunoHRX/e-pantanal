@@ -38,7 +38,7 @@ import { QueueLegend } from '@/components/QueueLegend'
 // =====================
 // Página
 // =====================
-export default function FilaDeAtendimentoPage() {  
+export default function FilaDeAtendimentoPage() {
   const router = useRouter()
   const [userName, setUserName] = useState<string>("");
   const [userId, setUserId] = useState<number>();
@@ -61,13 +61,15 @@ export default function FilaDeAtendimentoPage() {
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
       const user = JSON.parse(storedUser);
+      console.log(user);
+
       setUserName(user.usuario);
       setUserFilas(user.filas);
       setUserId(user.id);
     }
   }, []);
 
-  useEffect(() => {   
+  useEffect(() => {
     if (userFilas) runSearch()
   }, [query, filtroPrioridade, userFilas, userName])
 
@@ -82,12 +84,12 @@ export default function FilaDeAtendimentoPage() {
         const matchQuery = qNorm === '' || nomePaciente.includes(qNorm) || String(atendimento.paciente?.id ?? '').includes(qNorm)
 
         let matchFilas = false;
-        if (atendimento.filas) 
-        {
+        if (atendimento.filas) {
           atendimento.filas.forEach(fila => {
-            if (userFilas.includes(fila.fila.id) && fila.atendido == 0) matchFilas = true;
+            if ((userFilas.includes(fila.fila.id) || userFilas.includes(5)) && fila.atendido == 0) matchFilas = true;
           });
         }
+
 
         const pacientePrioridade = (atendimento.triagem?.prioridade ?? '').toLowerCase()
 
@@ -97,7 +99,12 @@ export default function FilaDeAtendimentoPage() {
         }
 
         const matchPrioridade = filtroPrioridade.length === 0 || filtroPrioridade.map(s => s.toLowerCase()).includes(pacientePrioridade)
-        
+
+        console.log('matchFilas: ' + matchFilas);
+        console.log('matchQuery: ' + matchQuery);
+        console.log('matchPrioridade: ' + matchPrioridade);
+        console.log('emAtendimento: ' + emAtendimento);
+
         return matchQuery && matchPrioridade && matchFilas && !emAtendimento
       })
       setResults(filtrados)
@@ -172,6 +179,14 @@ export default function FilaDeAtendimentoPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {userFilas.includes(5) && (<Button
+              onClick={() =>
+                router.push(`/atendimento/gerencial/`)
+              }
+            >
+              Gerencial
+            </Button>)}
           </div>
         </CardHeader>
 
@@ -242,7 +257,7 @@ export default function FilaDeAtendimentoPage() {
                           {p.triagem && (<Badge className={`${prioridadeColor(p.triagem.prioridade)}`}>
                             {prioridadeDesc(p.triagem.prioridade)}
                           </Badge>)}
-                          
+
                           <div className="flex flex-wrap gap-2">
                             {p.filas?.map((f, i) => {
                               const status = computeFilaStatus(p, f)
@@ -296,7 +311,7 @@ export default function FilaDeAtendimentoPage() {
                         variant={'outline'}
                       >
                         <Stethoscope className="h-4 w-4" />
-                          Iniciar atendimento
+                        Iniciar atendimento
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -305,12 +320,12 @@ export default function FilaDeAtendimentoPage() {
               </Card>
             )
           })}
-          
-          {triagemSelecionada && (<TriagemViewDialog
-            open={triagemOpen}
-            onOpenChange={setTriagemOpen}
-            atendimento={triagemSelecionada}
-          />)}
+
+        {triagemSelecionada && (<TriagemViewDialog
+          open={triagemOpen}
+          onOpenChange={setTriagemOpen}
+          atendimento={triagemSelecionada}
+        />)}
       </div>
     </div>
   )

@@ -29,6 +29,20 @@ export type TriagemFormData = {
     prioridade: string
 }
 
+export type Triagem = {
+    peso: number
+    altura: number
+    temperatura: number
+    fr: string
+    sato2: string
+    pa: string
+    fc: string
+    comorbidades: string
+    alergias: string
+    medicacao24h: string
+    queixa: string
+}
+
 export type TriagemUpdate = {
     id: number
     nomePaciente: string

@@ -276,6 +276,7 @@ export default function FilaEsperaPage() {
       toast.error('Encaminhamento do atendimento falhou!')
     } finally {
       setLoading(false)
+      setModalAtendimentosOpen(false)
     }
   }
 
