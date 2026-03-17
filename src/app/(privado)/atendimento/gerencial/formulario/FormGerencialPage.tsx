@@ -42,12 +42,13 @@ import AtendimentoForm from "../components/AtendimentoForm";
 import { AtendimentoGerencialFormType } from "@/types/Gerencial";
 import AutocompletePortal from "@/components/autocomplete-portal"
 import { ArrowLeft } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createElement, getElementById, updateElement } from "@/services/gerencialService";
 
 export default function GerencialPage() {
-    const params = useParams()
-    const id = params?.id ? Number(params.id) : 0
+    const searchParams = useSearchParams()
+    const id = searchParams.get("id")
+    const idNumber = id ? Number(id) : 0
     const [carregando, setCarregando] = useState(true)
     const router = useRouter()
 
@@ -77,6 +78,7 @@ export default function GerencialPage() {
             paciente_data_nascimento: '',
             atendimentos: [],
             triagem: {
+                id: 0 ,
                 peso: 0,
                 altura: 0,
                 temperatura: 0,
@@ -121,7 +123,7 @@ export default function GerencialPage() {
             setMedicamentos(m)
             setProcedimentos(p)
             setEspecialidades(esp)
-            setMedicos(u.filter(u => u.especialidade_id != 5 && u.id != 1))
+            setMedicos(u.filter(u => u.especialidade_id != 2 && u.id != 1))
             setPacientes(pat)
         } catch (err) {
             toast.error((err as Error).message)
@@ -134,10 +136,10 @@ export default function GerencialPage() {
         try {
             const data = formPaciente.getValues()
 
-            if (!id || id === 0) {
+            if (!idNumber) {
                 await createElement(data)
                 toast.success("Atendimento registrado com sucesso")
-                router.push(`/atendimento/gerencial/formulario/`)
+                // router.push(`/atendimento/gerencial/formulario/`)
             } else {
                 await updateElement(data)
                 toast.success("Atendimento atualizado com sucesso")
@@ -149,10 +151,9 @@ export default function GerencialPage() {
     }
 
     const handleBuscarAtendimento = async () => {
-        if (!id || id === 0) return
-
+        if (!idNumber) return
         try {
-            const data = await getElementById(id)
+            const data = await getElementById(idNumber)
 
             formPaciente.reset(data)
             setAtendimentos(data)

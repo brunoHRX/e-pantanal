@@ -42,7 +42,7 @@ export default function MedicamentosField({
 
         <Button
           type="button"
-          onClick={() => append({ nome: "" })}
+          onClick={() => append({ nome: "", id: 0 })}
         >
           <Plus className="w-40" />
         </Button>

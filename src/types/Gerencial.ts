@@ -14,6 +14,7 @@ export type AtendimentoGerencialMedicamento = {
 }
 
 export type AtendimentoGerencial = {
+    id?: number
     especialidade_id: number
     medico_id?: number
     medico_nome?: string
@@ -30,5 +31,5 @@ export type AtendimentoGerencialFormType = {
     paciente_nome?: string
     paciente_data_nascimento?:string
     atendimentos: AtendimentoGerencial[]
-    triagem: Triagem
+    triagem?: Triagem
 }

@@ -41,7 +41,7 @@ export default function ProcedimentosField({
         <h4 className="font-semibold">Procedimentos</h4>
         <Button
           type="button"
-          onClick={() => append({ nome: "", dente: "" })}
+          onClick={() => append({ nome: "", dente: "", id: 0 })}
         >
           <Plus className="w-40" />
         </Button>

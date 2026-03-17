@@ -54,6 +54,7 @@ export default function AtendimentoForm({
             <Button
                 type="button"
                 onClick={() => append({
+                    id: 0,
                     especialidade_id: 0,
                     medico_id: 0,
                     medico_nome: '',

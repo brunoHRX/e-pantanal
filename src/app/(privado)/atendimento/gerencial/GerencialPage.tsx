@@ -8,9 +8,11 @@ import { AtendimentoGerencialFormType } from "@/types/Gerencial"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     getAll,
-    deleteElement
+    // deleteElement
 } from "@/services/gerencialService"
 import { toast } from "sonner"
+import { safeDateTimeLabel } from "@/utils/functions"
+import { ColumnDef } from "@tanstack/react-table"
 
 export default function GerencialListPage() {
     const router = useRouter()
@@ -34,22 +36,22 @@ export default function GerencialListPage() {
         loadData()
     }, [])
 
-    async function handleDelete(id?: number) {
-        if (!id) return
-        if (!confirm("Deseja realmente excluir este atendimento?")) return
-        try {
-            await deleteElement(id)
-            setData(old => old.filter(x => x.id !== id))
-        } catch (err) {
-            console.error(err)
-            toast.error("Erro ao excluir")
-        }
-    }
+    // async function handleDelete(id?: number) {
+    //     if (!id) return
+    //     if (!confirm("Deseja realmente excluir este atendimento?")) return
+    //     try {
+    //         await deleteElement(id)
+    //         setData(old => old.filter(x => x.id !== id))
+    //     } catch (err) {
+    //         console.error(err)
+    //         toast.error("Erro ao excluir")
+    //     }
+    // }
 
-    const columns = [
-        {   accessorKey: "id", header: "ID" },
+    const columns: ColumnDef<AtendimentoGerencialFormType>[] = [
+        { accessorKey: "id", header: "ID" },
         { accessorKey: "paciente_nome", header: "Paciente" },
-        { accessorKey: "data_atendimento", header: "Data" },
+        { accessorKey: "data_atendimento", header: "Data", cell: ({ row }) => safeDateTimeLabel(row.original.data_atendimento), },
         {
             id: "acoes",
             header: "Ações",
@@ -64,14 +66,6 @@ export default function GerencialListPage() {
                             }
                         >
                             Editar
-                        </Button>
-
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(item.id)}
-                        >
-                            Excluir
                         </Button>
                     </div>
                 )

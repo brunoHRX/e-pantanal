@@ -30,6 +30,7 @@ export type TriagemFormData = {
 }
 
 export type Triagem = {
+    id?: number
     peso: number
     altura: number
     temperatura: number
