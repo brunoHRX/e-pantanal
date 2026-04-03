@@ -65,7 +65,7 @@ export default function AtendimentoForm({
                 })}
             >
 
-                Novo Atendimento
+                Adicionar Especialidade
 
             </Button>
 

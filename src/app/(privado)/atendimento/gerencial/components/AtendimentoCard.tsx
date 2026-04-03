@@ -9,12 +9,22 @@ import { Usuario } from "@/types/Usuario"
 import { Procedimento } from "@/types/Procedimento"
 import { Medicamento } from "@/types/Medicamento"
 import { Especialidade } from "@/types/Especialidade"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import * as Portal from "@radix-ui/react-dialog"
 import AutocompletePortal from "@/components/autocomplete-portal"
 import { Plus } from "lucide-react"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type Props = {
     index: number,
@@ -41,13 +51,23 @@ export default function AtendimentoCard({
         <Card>
             <CardHeader className="flex justify-between">
                 <CardTitle>Atendimento</CardTitle>
-                <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => remove(index)}
-                >
-                    Remover
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive">Remover</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Remover atendimento?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. O atendimento será removido do formulário.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => remove(index)}>Remover</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardHeader>
 
             <CardContent className="space-y-6">
@@ -100,9 +120,9 @@ export default function AtendimentoCard({
                     <Button
                         type="button"
                         className="self-end"
-                        onClick={() => setNovoMedico(true)}
+                        onClick={() => setNovoMedico(v => !v)}
                     >
-                        Novo
+                        {novoMedico ? 'Buscar' : 'Novo'}
                     </Button>
                 </div>
                 {novoMedico && (

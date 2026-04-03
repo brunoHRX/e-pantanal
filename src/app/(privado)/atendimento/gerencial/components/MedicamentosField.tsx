@@ -28,10 +28,23 @@ export default function MedicamentosField({
     }))
   }
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove: removeField } = useFieldArray({
     control,
     name: `atendimentos.${atendimentoIndex}.medicamentos`
   })
+
+  const remove = (i: number) => {
+    removeField(i)
+    setNovoProced(prev => {
+      const next: Record<number, boolean> = {}
+      Object.entries(prev).forEach(([k, v]) => {
+        const idx = Number(k)
+        if (idx < i) next[idx] = v
+        else if (idx > i) next[idx - 1] = v
+      })
+      return next
+    })
+  }
 
   return (
 
@@ -42,9 +55,9 @@ export default function MedicamentosField({
 
         <Button
           type="button"
-          onClick={() => append({ nome: "", id: 0 })}
+          onClick={() => append({ nome: "", id: 0, frequencia: "", duracao: "" })}
         >
-          <Plus className="w-40" />
+          <Plus className="w-4 h-4" />
         </Button>
       </div>
 

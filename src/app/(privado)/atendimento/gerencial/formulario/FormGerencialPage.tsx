@@ -44,16 +44,15 @@ import AutocompletePortal from "@/components/autocomplete-portal"
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createElement, getElementById, updateElement } from "@/services/gerencialService";
+import { ESPECIALIDADE_ADMIN_ID, USUARIO_ADMIN_ID } from "@/utils/constants";
 
 export default function GerencialPage() {
     const searchParams = useSearchParams()
     const id = searchParams.get("id")
-    const idNumber = id ? Number(id) : 0
+    const idParsed = id ? parseInt(id, 10) : NaN
+    const idNumber = isNaN(idParsed) ? 0 : idParsed
     const [carregando, setCarregando] = useState(true)
     const router = useRouter()
-
-    // Atendimentos
-    const [atendimentos, setAtendimentos] = useState<AtendimentoGerencialFormType | null>(null)
 
     // Procedimentos
     const [procedimentos, setProcedimentos] = useState<Procedimento[]>([])
@@ -99,16 +98,16 @@ export default function GerencialPage() {
         setNovoPaciente(!novoPaciente)
     }
 
-    // Carregamento inicial
+    // Carregamento inicial: busca dados de referência e, se houver id, carrega o atendimento
     useEffect(() => {
-        handleSearch()
-    }, [])
-
-    useEffect(() => {
-        if (id) {
-            handleBuscarAtendimento()
+        const init = async () => {
+            await handleSearch()
+            if (id) {
+                await handleBuscarAtendimento()
+            }
         }
-    }, [id])
+        init()
+    }, [])
 
     const handleSearch = async () => {
         setCarregando(true);
@@ -123,7 +122,7 @@ export default function GerencialPage() {
             setMedicamentos(m)
             setProcedimentos(p)
             setEspecialidades(esp)
-            setMedicos(u.filter(u => u.especialidade_id != 2 && u.id != 1))
+            setMedicos(u.filter(u => u.especialidade_id !== ESPECIALIDADE_ADMIN_ID && u.id !== USUARIO_ADMIN_ID))
             setPacientes(pat)
         } catch (err) {
             toast.error((err as Error).message)
@@ -132,14 +131,12 @@ export default function GerencialPage() {
         }
     }
 
-    const handleRegistrarAtendimento = async () => {
+    const handleRegistrarAtendimento = async (data: AtendimentoGerencialFormType) => {
         try {
-            const data = formPaciente.getValues()
-
             if (!idNumber) {
                 await createElement(data)
                 toast.success("Atendimento registrado com sucesso")
-                // router.push(`/atendimento/gerencial/formulario/`)
+                router.push(`/atendimento/gerencial/`)
             } else {
                 await updateElement(data)
                 toast.success("Atendimento atualizado com sucesso")
@@ -156,7 +153,6 @@ export default function GerencialPage() {
             const data = await getElementById(idNumber)
 
             formPaciente.reset(data)
-            setAtendimentos(data)
 
         } catch (error) {
             toast.error((error as Error).message)
@@ -240,7 +236,7 @@ export default function GerencialPage() {
                                                             name={`paciente_nome`}
                                                             render={({ field }) => (
                                                                 <FormItem>
-                                                                    <FormLabel>Medicamento</FormLabel>
+                                                                    <FormLabel>Nome do Paciente</FormLabel>
                                                                     <FormControl>
                                                                         <Input {...field} className="mt-1" />
                                                                     </FormControl>
@@ -299,7 +295,20 @@ export default function GerencialPage() {
                                                         name="triagem.peso"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel>Peso</FormLabel>
+                                                                <FormLabel>Peso (kg)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input {...field} className="mt-1" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={formPaciente.control}
+                                                        name="triagem.altura"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Altura (cm)</FormLabel>
                                                                 <FormControl>
                                                                     <Input {...field} className="mt-1" />
                                                                 </FormControl>
@@ -453,7 +462,7 @@ export default function GerencialPage() {
                         </section>
 
                         {/* Section 4 — Finalização */}
-                        <section className="border rounded-lg"><Button className="w-full" onClick={() => handleRegistrarAtendimento()} >Registrar atendimento</Button></section>
+                        <section className="border rounded-lg"><Button className="w-full" onClick={formPaciente.handleSubmit(handleRegistrarAtendimento)}>Registrar atendimento</Button></section>
                         </FormProvider>
                     </CardContent>
                 </Card>

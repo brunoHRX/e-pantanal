@@ -4,3 +4,10 @@ export const headers = () => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${localStorage.getItem("authToken")}`,
 })
+
+// IDs de especialidade
+export const ESPECIALIDADE_ADMIN_ID = 2
+export const ESPECIALIDADE_ODONTO_ID = 4
+
+// IDs de usuário reservados
+export const USUARIO_ADMIN_ID = 1

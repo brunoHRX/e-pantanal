@@ -8,6 +8,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input"
 import AutocompletePortal from "@/components/autocomplete-portal"
 import { useState } from "react"
+import { ESPECIALIDADE_ODONTO_ID } from "@/utils/constants"
 
 type Props = {
   atendimentoIndex: number
@@ -23,7 +24,7 @@ export default function ProcedimentosField({
 
   const { control, setValue } = useFormContext()
   const [novoProced, setNovoProced] = useState<Record<number, boolean>>({})
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove: removeField } = useFieldArray({
     control,
     name: `atendimentos.${atendimentoIndex}.procedimentos`
   })
@@ -35,6 +36,19 @@ export default function ProcedimentosField({
     }))
   }
 
+  const remove = (i: number) => {
+    removeField(i)
+    setNovoProced(prev => {
+      const next: Record<number, boolean> = {}
+      Object.entries(prev).forEach(([k, v]) => {
+        const idx = Number(k)
+        if (idx < i) next[idx] = v
+        else if (idx > i) next[idx - 1] = v
+      })
+      return next
+    })
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-between">
@@ -43,12 +57,12 @@ export default function ProcedimentosField({
           type="button"
           onClick={() => append({ nome: "", dente: "", id: 0 })}
         >
-          <Plus className="w-40" />
+          <Plus className="w-4 h-4" />
         </Button>
       </div>
 
       {fields.map((f, i) => (
-        <div key={f.id} className={`grid ${tipo === 4 ? "grid-cols-[1fr_auto_1fr_auto]" : "grid-cols-[1fr_auto_auto]"} gap-2 items-center`}>
+        <div key={f.id} className={`grid ${tipo === ESPECIALIDADE_ODONTO_ID ? "grid-cols-[1fr_auto_1fr_auto]" : "grid-cols-[1fr_auto_auto]"} gap-2 items-center`}>
 
           {!novoProced[i] && <FormField
             control={control}
@@ -98,7 +112,7 @@ export default function ProcedimentosField({
           </Button>
 
 
-          {tipo === 4 && (
+          {tipo === ESPECIALIDADE_ODONTO_ID && (
             <FormField
               control={control}
               name={`atendimentos.${atendimentoIndex}.procedimentos.${i}.dente`}
@@ -120,7 +134,7 @@ export default function ProcedimentosField({
             variant="destructive"
             onClick={() => remove(i)}
           >
-            <Trash2 className="w-40" />
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       ))}
